@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 export default function FlashcardsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "my">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,6 +58,24 @@ export default function FlashcardsPage() {
       ignore = true;
     };
   }, [user, activeTab]);
+
+  // Mentor role check placed safely after all hooks
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <Link
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </Link>
+      </div>
+    );
+  }
 
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +138,7 @@ export default function FlashcardsPage() {
       <div className="bg-linear-to-r from-[#A7D7C5]/30 to-[#A2C4C9]/30 rounded-3xl p-6 sm:p-8 border border-[#74B49B]/30 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-2xl">
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-[#427563] shadow-2xs">
-            Spaced Repetition & Recall
+            Spaced Repetition &amp; Recall
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight">
             Interactive <span className="text-[#5C899D]">Flashcards</span>
@@ -133,7 +151,7 @@ export default function FlashcardsPage() {
         {user && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition shrink-0"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Flashcard Deck
           </button>
@@ -145,7 +163,7 @@ export default function FlashcardsPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab("all")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === "all"
                 ? "bg-[#74B49B] text-white shadow-xs"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -156,7 +174,7 @@ export default function FlashcardsPage() {
           {user && (
             <button
               onClick={() => setActiveTab("my")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === "my"
                   ? "bg-[#5C899D] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -240,7 +258,7 @@ export default function FlashcardsPage() {
                       {isOwner && (
                         <button
                           onClick={() => handleDeleteDeck(deck.id)}
-                          className="p-1 text-slate-300 hover:text-rose-500 rounded transition"
+                          className="p-1 text-slate-300 hover:text-rose-500 rounded transition cursor-pointer"
                           title="Delete Deck"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -289,7 +307,7 @@ export default function FlashcardsPage() {
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-xs text-slate-400 hover:text-slate-700"
+                className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 Close
               </button>
@@ -364,14 +382,14 @@ export default function FlashcardsPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-5 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                  className="px-5 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
                 >
                   {creating ? "Creating..." : "Create Deck"}
                 </button>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { Search, BookOpen, AlertCircle, Bookmark } from "lucide-react";
 import { supabase, Course, AcademicProgram, AcademicTrack } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import CourseCard from "@/components/CourseCard";
 import AcademicTrackSelector from "@/components/AcademicTrackSelector";
 import { getSavedCourses } from "@/lib/bookmarks";
@@ -24,6 +25,7 @@ function getServerTrackSnapshot(): AcademicTrack | "all" {
 }
 
 export default function CoursesPage() {
+  const { profile } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [programs, setPrograms] = useState<AcademicProgram[]>([]);
 
@@ -87,6 +89,24 @@ export default function CoursesPage() {
       ignore = true;
     };
   }, []);
+
+  // Mentor role check placed AFTER all hooks have been called safely
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <a
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </a>
+      </div>
+    );
+  }
 
   // Filter programs based on the currently selected academic track
   const availablePrograms = programs.filter(

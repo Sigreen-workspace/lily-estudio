@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { BookCheck, Clock, Award, ArrowRight, AlertCircle, History } from "lucide-react";
 import { supabase, PracticeTest, TestAttempt } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { getSessionId } from "@/lib/testSession";
 
 export default function PracticePage() {
+  const { profile } = useAuth();
   const [tests, setTests] = useState<PracticeTest[]>([]);
   const [recentAttempts, setRecentAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,24 @@ export default function PracticePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Mentor role check placed safely after hooks
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <Link
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </Link>
+      </div>
+    );
   }
 
   const getDifficultyBadge = (diff: string) => {

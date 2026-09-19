@@ -57,7 +57,7 @@ export default function Header() {
               <div className="flex items-center gap-2">
                 <Link
                   href={dashboardPath}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-[#5C899D]" />
                   <span>Dashboard</span>
@@ -75,8 +75,9 @@ export default function Header() {
                   <UserIcon className="w-4 h-4" />
                 </Link>
                 <button
+                  type="button"
                   onClick={() => signOut()}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -105,7 +106,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition"
+            className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition cursor-pointer"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -151,11 +152,12 @@ export default function Header() {
                   My Profile
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     signOut();
                   }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   Sign Out

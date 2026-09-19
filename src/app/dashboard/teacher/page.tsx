@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function TeacherDashboardPage() {
@@ -42,21 +44,22 @@ function TeacherDashboardContent() {
       if (!user) return;
       setLoading(true);
       try {
-        const { data: cData } = await supabase
-          .from("courses")
-          .select("*, academic_programs(*), subjects(*)")
-          .eq("created_by", user.id)
-          .order("created_at", { ascending: false });
-
-        const { data: tData } = await supabase
-          .from("tests")
-          .select("*")
-          .eq("created_by", user.id)
-          .order("created_at", { ascending: false });
+        const [cRes, tRes] = await Promise.all([
+          supabase
+            .from("courses")
+            .select("*, academic_programs(*), subjects(*)")
+            .eq("created_by", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("tests")
+            .select("*")
+            .eq("created_by", user.id)
+            .order("created_at", { ascending: false }),
+        ]);
 
         if (!ignore) {
-          setCourses(cData || []);
-          setTests(tData || []);
+          setCourses(cRes.data || []);
+          setTests(tRes.data || []);
         }
       } catch (e) {
         console.error("Teacher data fetch error:", e);
@@ -73,9 +76,9 @@ function TeacherDashboardContent() {
   }, [user]);
 
   const isVerified = Boolean(
+    profile?.role === "admin" ||
     profile?.is_teacher_verified ||
-      profile?.teacher_verification_status === "approved" ||
-      profile?.role === "admin"
+    profile?.teacher_verification_status === "approved"
   );
 
   const handleUpdateCourseStatus = async (courseId: string, newStatus: ContentStatus) => {
@@ -98,8 +101,8 @@ function TeacherDashboardContent() {
       setCourses((prev) =>
         prev.map((c) => (c.id === courseId ? { ...c, status: newStatus } : c))
       );
-      setActionMsg(`Course status updated to ${newStatus}.`);
-      setTimeout(() => setActionMsg(null), 3000);
+      setActionMsg(`Course status successfully updated to ${newStatus}.`);
+      setTimeout(() => setActionMsg(null), 3500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update status.";
       setActionMsg(msg);
@@ -107,7 +110,7 @@ function TeacherDashboardContent() {
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this course and its resources?")) return;
+    if (!confirm("Are you sure you want to permanently delete this course and its units?")) return;
     try {
       const { error } = await supabase
         .from("courses")
@@ -117,10 +120,29 @@ function TeacherDashboardContent() {
       if (error) throw error;
 
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
-      setActionMsg("Course deleted successfully.");
-      setTimeout(() => setActionMsg(null), 3000);
+      setActionMsg("Course removed successfully.");
+      setTimeout(() => setActionMsg(null), 3500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to delete course.";
+      setActionMsg(msg);
+    }
+  };
+
+  const handleDeleteTest = async (testId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this assessment?")) return;
+    try {
+      const { error } = await supabase
+        .from("tests")
+        .delete()
+        .eq("id", testId);
+
+      if (error) throw error;
+
+      setTests((prev) => prev.filter((t) => t.id !== testId));
+      setActionMsg("Practice test deleted successfully.");
+      setTimeout(() => setActionMsg(null), 3500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete assessment.";
       setActionMsg(msg);
     }
   };
@@ -148,6 +170,8 @@ function TeacherDashboardContent() {
         return "bg-slate-100 text-slate-600 border-slate-200";
       case "archived":
         return "bg-rose-50 text-rose-700 border-rose-200";
+      default:
+        return "bg-slate-100 text-slate-600 border-slate-200";
     }
   };
 
@@ -163,7 +187,7 @@ function TeacherDashboardContent() {
             <RoleBadge role="teacher" isVerified={isVerified} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800">
-            Educator Hub: {profile?.full_name}
+            Educator Hub: {profile?.full_name || "Faculty Member"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600">
             {profile?.qualifications ? `${profile.qualifications} • ` : ""}
@@ -171,23 +195,44 @@ function TeacherDashboardContent() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Request Admin Access Button */}
+          {profile?.role !== "admin" && !profile?.assigned_roles?.includes("admin") && (
+            <button
+              type="button"
+              onClick={async () => {
+                const reason = prompt("State your reason for requesting platform administrative rights:");
+                if (!reason?.trim()) return;
+
+                const { error } = await supabase.rpc("apply_for_admin_role", { reason_text: reason.trim() });
+                if (!error) {
+                  alert("Admin access request successfully submitted for Root Admin review!");
+                } else {
+                  alert("Error: " + error.message);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-xl text-xs font-semibold shadow-xs cursor-pointer transition"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> Request Admin Access
+            </button>
+          )}
+
           <Link
             href="/dashboard/teacher/courses/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold shadow-xs transition"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Course
           </Link>
           <Link
             href="/dashboard/teacher/tests/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#5C899D] hover:bg-[#4a7285] text-white text-xs font-semibold shadow-xs transition"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#5C899D] hover:bg-[#4a7285] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> Create Test
+            <Plus className="w-4 h-4" /> Create Assessment
           </Link>
         </div>
       </div>
 
-      {/* Manual Verification State Banner */}
+      {/* Manual Verification Status Banner */}
       {!isVerified && (
         <div
           className={`p-5 rounded-3xl border flex items-start gap-3.5 shadow-xs ${
@@ -212,8 +257,8 @@ function TeacherDashboardContent() {
             </h2>
             <p className="text-slate-600 leading-relaxed">
               {profile?.teacher_verification_status === "rejected"
-                ? profile.verification_notes || "Your verification application needs additional documentation. Please contact platform administration."
-                : "To ensure academic standard integrity across Lily Estudio, all teacher profiles undergo manual verification before course publishing permissions are granted. You can continue authoring and structuring course modules in draft mode."}
+                ? profile.verification_notes || "Your verification application needs additional documentation. Please re-submit updated credentials."
+                : "To ensure academic standard integrity across Lily Estudio, all teacher profiles undergo manual verification before course publishing permissions are granted. You can author and structure course units in draft mode."}
             </p>
           </div>
         </div>
@@ -221,8 +266,8 @@ function TeacherDashboardContent() {
 
       {/* Action Notification */}
       {actionMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 flex items-center gap-2 shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{actionMsg}</span>
         </div>
       )}
@@ -230,11 +275,11 @@ function TeacherDashboardContent() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Created</span>
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Units</span>
           <strong className="text-2xl font-bold text-slate-800 block">{totalCourses + tests.length}</strong>
         </div>
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Published</span>
+          <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Live &amp; Public</span>
           <strong className="text-2xl font-bold text-slate-800 block">{publishedCourses}</strong>
         </div>
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -252,24 +297,26 @@ function TeacherDashboardContent() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setActiveTab("courses")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeTab === "courses"
                   ? "bg-[#74B49B] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5" /> My Courses ({courses.length})
+              <BookOpen className="w-3.5 h-3.5" /> Course Modules ({courses.length})
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("tests")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeTab === "tests"
                   ? "bg-[#5C899D] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              <BookCheck className="w-3.5 h-3.5" /> My Practice Tests ({tests.length})
+              <BookCheck className="w-3.5 h-3.5" /> Diagnostic Tests ({tests.length})
             </button>
           </div>
 
@@ -280,7 +327,7 @@ function TeacherDashboardContent() {
               onChange={(e) => setStatusFilter(e.target.value as ContentStatus | "all")}
               className="py-1.5 px-3 border border-slate-200 rounded-xl text-xs bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#74B49B]"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">All Content</option>
               <option value="draft">Drafts</option>
               <option value="submitted">Submitted for Review</option>
               <option value="published">Published</option>
@@ -301,7 +348,7 @@ function TeacherDashboardContent() {
                 href="/dashboard/teacher/courses/new"
                 className="inline-flex items-center gap-1 text-xs font-bold text-[#5C899D] hover:underline"
               >
-                Create your first course syllabus <Plus className="w-3.5 h-3.5" />
+                Structure your first syllabus module <Plus className="w-3.5 h-3.5" />
               </Link>
             </div>
           ) : (
@@ -328,8 +375,9 @@ function TeacherDashboardContent() {
                   <div className="flex items-center gap-2 shrink-0">
                     {c.status === "draft" && (
                       <button
+                        type="button"
                         onClick={() => handleUpdateCourseStatus(c.id, "submitted")}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition cursor-pointer"
                       >
                         <Send className="w-3 h-3" /> Submit for Review
                       </button>
@@ -337,8 +385,9 @@ function TeacherDashboardContent() {
 
                     {c.status === "submitted" && isVerified && (
                       <button
+                        type="button"
                         onClick={() => handleUpdateCourseStatus(c.id, "published")}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition cursor-pointer"
                         title="Publish course"
                       >
                         <CheckCircle2 className="w-3 h-3" /> Publish Now
@@ -354,8 +403,9 @@ function TeacherDashboardContent() {
                     </Link>
 
                     <button
+                      type="button"
                       onClick={() => handleDeleteCourse(c.id)}
-                      className="p-2 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-50 transition"
+                      className="p-2 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-50 transition cursor-pointer"
                       title="Delete Course"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -369,12 +419,12 @@ function TeacherDashboardContent() {
           filteredTests.length === 0 ? (
             <div className="py-12 text-center space-y-3">
               <BookCheck className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm text-slate-600 font-medium">No practice tests authored yet.</p>
+              <p className="text-sm text-slate-600 font-medium">No practice assessments authored yet.</p>
               <Link
                 href="/dashboard/teacher/tests/new"
                 className="inline-flex items-center gap-1 text-xs font-bold text-[#5C899D] hover:underline"
               >
-                Create your first practice test <Plus className="w-3.5 h-3.5" />
+                Create your first practice assessment <Plus className="w-3.5 h-3.5" />
               </Link>
             </div>
           ) : (
@@ -398,10 +448,19 @@ function TeacherDashboardContent() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Link
                       href={`/practice/${t.slug}`}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold"
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1"
                     >
-                      Preview Test
+                      Preview Assessment <ExternalLink className="w-3 h-3 text-slate-400" />
                     </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTest(t.id)}
+                      className="p-2 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                      title="Delete Assessment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}

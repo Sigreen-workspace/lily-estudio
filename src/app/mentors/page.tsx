@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase, UserProfile, AcademicTrack } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import RequestMentorshipModal from "@/components/RequestMentorshipModal";
 import ReportModal from "@/components/ReportModal";
 import {
@@ -11,10 +13,11 @@ import {
   GraduationCap,
   MessageSquare,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 
 export default function MentorsPage() {
+  const { profile } = useAuth();
   const [mentors, setMentors] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [trackFilter, setTrackFilter] = useState<AcademicTrack | "all">("all");
@@ -31,15 +34,52 @@ export default function MentorsPage() {
     async function fetchMentors() {
       setLoading(true);
       try {
+        // Fetch profiles joined with approved mentor profiles, explicitly selecting user_id
         const { data, error } = await supabase
           .from("profiles")
-          .select("*")
-          .in("role", ["mentor", "admin"])
+          .select(`
+            *,
+            mentor_profiles!inner (
+              user_id,
+              verification_status,
+              headline
+            )
+          `)
+          .eq("mentor_profiles.verification_status", "approved")
+          .neq("account_status", "suspended")
           .order("full_name", { ascending: true });
 
         if (!ignore && !error && data) {
-          setMentors(data);
+          // Map the fetched data safely without using 'any'
+          const mappedMentors = data.map((item: Record<string, unknown>) => {
+            const mentorProfiles = item.mentor_profiles as Record<string, unknown> | null;
+            const resolvedId = (mentorProfiles?.user_id as string) || (item.id as string);
+            return {
+              ...item,
+              id: resolvedId,
+              user_id: resolvedId,
+            };
+          });
+          setMentors(mappedMentors as unknown as UserProfile[]);
+        } else if (!ignore) {
+          // Fallback fetch by role (excluding admins so they don't show up in the mentor directory)
+          const { data: fallbackData } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("role", "mentor")
+            .neq("account_status", "suspended")
+            .order("full_name", { ascending: true });
+
+          if (fallbackData) {
+            const mappedFallback = fallbackData.map((item: Record<string, unknown>) => ({
+              ...item,
+              user_id: item.id as string,
+            }));
+            setMentors(mappedFallback as unknown as UserProfile[]);
+          }
         }
+      } catch (err) {
+        console.error("Failed to fetch public mentors:", err);
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -52,9 +92,28 @@ export default function MentorsPage() {
     };
   }, []);
 
+  // Mentor role check placed safely after all hooks
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <Link
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </Link>
+      </div>
+    );
+  }
+
   const filteredMentors = mentors.filter((m) => {
+    const mentorName = m.full_name || "Mentor";
     const matchesSearch =
-      m.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      mentorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       Boolean(m.bio?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       Boolean(m.mentorship_topics?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
@@ -70,22 +129,22 @@ export default function MentorsPage() {
       {/* Header Banner */}
       <div className="bg-linear-to-r from-[#A7D7C5]/30 to-[#A2C4C9]/30 rounded-3xl p-6 sm:p-8 border border-[#74B49B]/30 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-2xl">
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-[#427563] shadow-2xs">
-            100% Free Mentorship & Guidance
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-[#427563] shadow-xs">
+            100% Free Mentorship &amp; Guidance
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight">
-            Academic & Career <span className="text-[#5C899D]">Mentors</span>
+            Academic &amp; Career <span className="text-[#5C899D]">Mentors</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             Connect directly with verified educators, researchers, and senior peers for personalized advice on school, college, study-abroad applications, and competitive exams.
           </p>
         </div>
-        <div className="p-4 bg-white/90 backdrop-blur-xs rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1.5 shadow-2xs">
+        <div className="p-4 bg-white/90 backdrop-blur-xs rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1.5 shadow-xs">
           <div className="flex items-center gap-1.5 font-bold text-slate-800">
-            <ShieldCheck className="w-4 h-4 text-[#74B49B]" /> Free & Safe Promise
+            <ShieldCheck className="w-4 h-4 text-[#74B49B]" /> Free &amp; Safe Promise
           </div>
           <p className="text-[11px] text-slate-500">
-            No bookings fees or commercial services. Private credentials remain encrypted.
+            No booking fees or commercial services. Private credentials remain encrypted.
           </p>
         </div>
       </div>
@@ -96,7 +155,7 @@ export default function MentorsPage() {
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by mentor name, topic , or background..."
+            placeholder="Search by mentor name, topic, or background..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 focus:border-[#74B49B] transition"
@@ -113,7 +172,7 @@ export default function MentorsPage() {
             <option value="school">School (Class 1–12)</option>
             <option value="college">College / University</option>
             <option value="competitive_exam">Competitive Exams</option>
-            <option value="study_abroad">Study Abroad & Admissions</option>
+            <option value="study_abroad">Study Abroad &amp; Admissions</option>
           </select>
         </div>
       </div>
@@ -135,91 +194,96 @@ export default function MentorsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMentors.map((mentor) => (
-            <div
-              key={mentor.id}
-              className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-[#A7D7C5]/20 text-[#427563] flex items-center justify-center font-extrabold text-lg">
-                      {mentor.full_name.charAt(0).toUpperCase()}
+          {filteredMentors.map((mentor) => {
+            const displayName = mentor.full_name || "Academic Mentor";
+            const initial = displayName.charAt(0).toUpperCase();
+
+            return (
+              <div
+                key={mentor.id}
+                className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#A7D7C5]/20 text-[#427563] flex items-center justify-center font-extrabold text-lg">
+                        {initial}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-800">{displayName}</h3>
+                        <p className="text-xs text-slate-500">{mentor.institution || "Independent Advisor"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-800">{mentor.full_name}</h3>
-                      <p className="text-xs text-slate-500">{mentor.institution || "Independent Advisor"}</p>
-                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        mentor.is_available_for_mentorship
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {mentor.is_available_for_mentorship ? "Available" : "Busy"}
+                    </span>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      mentor.is_available_for_mentorship
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
+                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                    {mentor.bio || "Dedicated mentor offering free academic advice and pacing strategy."}
+                  </p>
+
+                  {/* Topics / Specialties */}
+                  {mentor.mentorship_topics && mentor.mentorship_topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {mentor.mentorship_topics.map((top, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#74B49B]/10 text-[#427563]"
+                        >
+                          {top}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-500">
+                    {mentor.qualifications && (
+                      <div className="flex items-center gap-1.5 truncate">
+                        <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{mentor.qualifications}</span>
+                      </div>
+                    )}
+                    {mentor.languages_spoken && (
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{mentor.languages_spoken.join(", ")}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setReportTarget(mentor)}
+                    className="p-2 text-slate-300 hover:text-rose-500 transition cursor-pointer"
+                    title="Report user"
                   >
-                    {mentor.is_available_for_mentorship ? "Available" : "Busy"}
-                  </span>
-                </div>
+                    <AlertTriangle className="w-4 h-4" />
+                  </button>
 
-                <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
-                  {mentor.bio || "Dedicated mentor offering free academic advice and pacing strategy."}
-                </p>
-
-                {/* Topics / Specialties */}
-                {mentor.mentorship_topics && mentor.mentorship_topics.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {mentor.mentorship_topics.map((top, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#74B49B]/10 text-[#427563]"
-                      >
-                        {top}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-500">
-                  {mentor.qualifications && (
-                    <div className="flex items-center gap-1.5 truncate">
-                      <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{mentor.qualifications}</span>
-                    </div>
-                  )}
-                  {mentor.languages_spoken && (
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{mentor.languages_spoken.join(", ")}</span>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedMentor(mentor);
+                      setIsRequestOpen(true);
+                    }}
+                    disabled={!mentor.is_available_for_mentorship}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold transition shadow-xs disabled:opacity-40 cursor-pointer"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> Request Guidance
+                  </button>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => setReportTarget(mentor)}
-                  className="p-2 text-slate-300 hover:text-rose-500 transition"
-                  title="Report user"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    setSelectedMentor(mentor);
-                    setIsRequestOpen(true);
-                  }}
-                  disabled={!mentor.is_available_for_mentorship}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold transition shadow-2xs disabled:opacity-40"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" /> Request Guidance
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -238,7 +302,7 @@ export default function MentorsPage() {
       {reportTarget && (
         <ReportModal
           targetUserId={reportTarget.id}
-          targetUserName={reportTarget.full_name}
+          targetUserName={reportTarget.full_name || "Mentor"}
           isOpen={Boolean(reportTarget)}
           onClose={() => setReportTarget(null)}
         />

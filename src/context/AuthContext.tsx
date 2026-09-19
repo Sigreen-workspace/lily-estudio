@@ -87,6 +87,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchProfile]);
 
+  // Real-time listener: Jaise hi database mein profile update ho, state turant sync ho jaye
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`profile-changes-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setProfile(payload.new as UserProfile);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);

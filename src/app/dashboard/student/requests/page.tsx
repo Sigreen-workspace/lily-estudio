@@ -5,7 +5,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, MentorshipRequest } from "@/lib/supabase";
-import { ArrowLeft, Compass } from "lucide-react";
+import { ArrowLeft, Compass, Clock, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 
 export default function StudentRequestsPage() {
   return (
@@ -19,6 +19,7 @@ function StudentRequestsContent() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<MentorshipRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -26,16 +27,67 @@ function StudentRequestsContent() {
     async function loadRequests() {
       if (!user) return;
       setLoading(true);
+
       try {
-        const { data, error } = await supabase
+        type RawRequest = Record<string, unknown> & { mentor_id?: string };
+        let rawData: RawRequest[] = [];
+        const res1 = await supabase
           .from("mentorship_requests")
-          .select("*, profiles:mentor_id(*)")
+          .select("*")
           .eq("student_id", user.id)
           .order("created_at", { ascending: false });
 
-        if (!ignore && !error && data) {
-          setRequests(data as unknown as MentorshipRequest[]);
+        if (res1.data && res1.data.length > 0) {
+          rawData = (res1.data ?? []) as RawRequest[];
+        } else {
+          const res2 = await supabase
+            .from("mentor_requests")
+            .select("*")
+            .eq("student_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (res2.data) {
+            rawData = res2.data as RawRequest[];
+          }
         }
+
+        if (!ignore && rawData.length > 0) {
+          const mentorIds = Array.from(
+            new Set(
+              rawData
+                .map((r) => r.mentor_id)
+                .filter((id): id is string => typeof id === "string" && id.length > 0)
+            )
+          );
+          
+          const profileMap: Record<string, { full_name?: string; institution?: string; avatar_url?: string }> = {};
+          if (mentorIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from("profiles")
+              .select("id, full_name, institution, avatar_url")
+              .in("id", mentorIds);
+
+            if (profilesData) {
+              profilesData.forEach((p) => {
+                profileMap[p.id] = p;
+              });
+            }
+          }
+
+          const formattedRequests = rawData.map((req) => ({
+            ...req,
+            profiles: profileMap[req.mentor_id ?? ""] || {
+              full_name: "Academic Mentor",
+              institution: "Independent Advisor",
+            },
+          }));
+
+          setRequests(formattedRequests as unknown as MentorshipRequest[]);
+        } else if (!ignore) {
+          setRequests([]);
+        }
+      } catch (err) {
+        console.error("Failed to load student consultation inquiries:", err);
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -48,19 +100,29 @@ function StudentRequestsContent() {
     };
   }, [user]);
 
-  const handleCancelRequest = async (reqId: string) => {
-    if (!confirm("Cancel this mentorship consultation request?")) return;
+  // Handle Delete Request
+  const handleDeleteRequest = async (reqId: string) => {
+    if (!confirm("Kya aap is mentorship request ko permanently delete karna chahte hain?")) return;
+    setActionId(reqId);
+
     try {
-      await supabase
+      const { error } = await supabase
         .from("mentorship_requests")
-        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .delete()
         .eq("id", reqId);
 
-      setRequests((prev) =>
-        prev.map((r) => (r.id === reqId ? { ...r, status: "cancelled" } : r))
-      );
+      if (error) {
+        await supabase
+          .from("mentor_requests")
+          .delete()
+          .eq("id", reqId);
+      }
+
+      setRequests((prev) => prev.filter((r) => r.id !== reqId));
     } catch {
-      alert("Failed to cancel request.");
+      alert("Request delete karne mein asafalta rahi. Kripya dobara koshish karein.");
+    } finally {
+      setActionId(null);
     }
   };
 
@@ -102,63 +164,75 @@ function StudentRequestsContent() {
             </p>
             <Link
               href="/mentors"
-              className="inline-block mt-2 px-4 py-2 bg-[#5C899D] text-white rounded-xl text-xs font-semibold"
+              className="inline-block mt-2 px-4 py-2 bg-[#5C899D] text-white rounded-xl text-xs font-semibold hover:bg-[#4a7285] transition"
             >
               Browse Mentors
             </Link>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {requests.map((r) => (
-              <div key={r.id} className="py-5 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                          r.status === "pending"
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : r.status === "accepted"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : r.status === "declined"
-                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </span>
+            {requests.map((r) => {
+              const studentNote = r.message || r.notes || "No message content attached.";
+              const mentorName = r.profiles?.full_name || "Academic Mentor";
+
+              return (
+                <div key={r.id} className="py-5 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded flex items-center gap-1 ${
+                            r.status === "pending"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : r.status === "accepted"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : r.status === "declined"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {r.status === "pending" && <Clock className="w-3 h-3" />}
+                          {r.status === "accepted" && <CheckCircle2 className="w-3 h-3" />}
+                          {r.status === "declined" && <XCircle className="w-3 h-3" />}
+                          {r.status}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {new Date(r.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-800 mt-1">{r.topic}</h3>
+                      <p className="text-xs text-slate-500">
+                        Advisor: <strong className="text-slate-700">{mentorName}</strong>
+                        {r.profiles?.institution && (
+                          <span className="text-slate-400 font-normal"> ({r.profiles.institution})</span>
+                        )}
+                      </p>
                     </div>
-                    <h3 className="text-base font-bold text-slate-800 mt-1">{r.topic}</h3>
-                    <p className="text-xs text-slate-500">
-                      Advisor: <strong className="text-slate-700">{r.profiles?.full_name || "Mentor"}</strong>
-                    </p>
+
+                    {/* Delete Request Button */}
+                    <button
+                      onClick={() => handleDeleteRequest(r.id)}
+                      disabled={actionId === r.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {actionId === r.id ? "Deleting..." : "Delete"}
+                    </button>
                   </div>
 
-                  {r.status === "pending" && (
-                    <button
-                      onClick={() => handleCancelRequest(r.id)}
-                      className="text-xs text-slate-400 hover:text-rose-600 transition"
-                    >
-                      Cancel Request
-                    </button>
+                  <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-700 leading-relaxed border border-slate-100">
+                    <span className="font-semibold text-slate-800">Your Message:</span> {studentNote}
+                  </div>
+
+                  {r.mentor_response && (
+                    <div className="p-4 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs space-y-1">
+                      <span className="font-bold text-emerald-800">Response &amp; Contact from {mentorName}:</span>
+                      <p className="text-slate-800 font-medium break-all leading-relaxed">{r.mentor_response}</p>
+                    </div>
                   )}
                 </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-700">
-                  <span className="font-semibold text-slate-800">Your Message:</span> {r.message}
-                </div>
-
-                {r.mentor_response && (
-                  <div className="p-4 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs space-y-1">
-                    <span className="font-bold text-emerald-800">Response from {r.profiles?.full_name}:</span>
-                    <p className="text-slate-800 leading-relaxed">{r.mentor_response}</p>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

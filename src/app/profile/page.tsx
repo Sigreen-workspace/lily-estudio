@@ -43,7 +43,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
   const [country, setCountry] = useState(initialProfile.country || "India");
   const [learningPref, setLearningPref] = useState(initialProfile.learning_preference || "visual");
 
-  // Teacher specific fields
+  // Teacher/Mentor specific fields
   const [bio, setBio] = useState(initialProfile.bio || "");
   const [qualifications, setQualifications] = useState(initialProfile.qualifications || "");
   const [experienceYears, setExperienceYears] = useState(String(initialProfile.experience_years || 0));
@@ -54,7 +54,11 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isTeacher = initialProfile.role === "teacher" || initialProfile.role === "admin";
+  // Updated to include mentors as well
+  const isEducatorOrMentor = 
+    initialProfile.role === "teacher" || 
+    initialProfile.role === "admin" || 
+    initialProfile.role === "mentor";
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +94,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
         updated_at: new Date().toISOString(),
       };
 
-      if (isTeacher) {
+      if (isEducatorOrMentor) {
         payload.bio = bio;
         payload.qualifications = qualifications;
         payload.experience_years = parseInt(experienceYears, 10) || 0;
@@ -123,8 +127,8 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
           User <span className="text-[#5C899D]">Profile</span>
         </h1>
         <p className="text-slate-600 text-sm mt-1">
-          {isTeacher
-            ? "Manage your teacher credentials, teaching subjects, and public educator bio."
+          {isEducatorOrMentor
+            ? "Manage your credentials, expertise, and public profile bio."
             : "Manage your student credentials, study preferences, and academic background."}
         </p>
       </div>
@@ -246,7 +250,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Subjects & Interests <span className="text-slate-400 font-normal">(comma-separated)</span>
+                Subjects &amp; Interests <span className="text-slate-400 font-normal">(comma-separated)</span>
               </label>
               <input
                 type="text"
@@ -258,23 +262,23 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
             </div>
           </div>
 
-          {/* Teacher Credentials Section (Rendered for Teachers & Admins) */}
-          {isTeacher && (
+          {/* Educator & Mentor Credentials Section */}
+          {isEducatorOrMentor && (
             <div className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl space-y-4">
               <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
                 <BookOpen className="w-4 h-4 text-[#74B49B]" />
-                <h3>Teacher & Educator Credentials</h3>
+                <h3>Educator &amp; Mentor Credentials</h3>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Short Educator Biography
+                  Short Bio &amp; Mentorship Overview
                 </label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Share a short summary of your teaching background, pedagogy, and goals..."
+                  placeholder="Share a short summary of your background, expertise, and guidance style..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
                 />
               </div>
@@ -282,7 +286,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Qualifications & Degrees
+                    Qualifications &amp; Degrees
                   </label>
                   <input
                     type="text"
@@ -295,7 +299,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Teaching Experience (Years)
+                    Experience (Years)
                   </label>
                   <input
                     type="number"
@@ -311,26 +315,26 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Teaching Subjects <span className="text-slate-400 font-normal">(comma-separated)</span>
+                    Subjects / Topics <span className="text-slate-400 font-normal">(comma-separated)</span>
                   </label>
                   <input
                     type="text"
                     value={teachingSubjects}
                     onChange={(e) => setTeachingSubjects(e.target.value)}
-                    placeholder="e.g. Physics, Chemistry, Mathematics"
+                    placeholder="e.g. Physics, GRE Strategy, SOP Review"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Classes / Levels Taught <span className="text-slate-400 font-normal">(comma-separated)</span>
+                    Classes / Levels <span className="text-slate-400 font-normal">(comma-separated)</span>
                   </label>
                   <input
                     type="text"
                     value={teachingClasses}
                     onChange={(e) => setTeachingClasses(e.target.value)}
-                    placeholder="e.g. Class 10, Class 12, UG, PG"
+                    placeholder="e.g. College, Competitive Exam, Study Abroad"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
                   />
                 </div>
@@ -346,9 +350,9 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
               onChange={(e) => setLearningPref(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
             >
-              <option value="visual">Visual & Video-First</option>
-              <option value="reading">Reading & Detailed Notes</option>
-              <option value="practice">Practice Tests & Active Drills</option>
+              <option value="visual">Visual &amp; Video-First</option>
+              <option value="reading">Reading &amp; Detailed Notes</option>
+              <option value="practice">Practice Tests &amp; Active Drills</option>
             </select>
           </div>
 
@@ -357,7 +361,7 @@ function ProfileForm({ initialProfile }: { initialProfile: UserProfile }) {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold shadow-xs transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold shadow-xs transition disabled:opacity-50 cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               {saving ? "Saving..." : "Save Profile"}

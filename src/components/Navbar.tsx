@@ -15,30 +15,25 @@ import {
   Bell,
 } from "lucide-react";
 
-const navLinks = [
-  { href: "/courses", label: "Courses" },
-  { href: "/practice", label: "Practice" },
-  { href: "/flashcards", label: "Flashcards" },
-  { href: "/scholarships", label: "Scholarships" },
-  { href: "/community", label: "Community" },
-  { href: "/mentors", label: "Mentors" },
-];
-
 export default function Navbar() {
   const pathname = usePathname();
   const { user, profile, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [appStatus, setAppStatus] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
 
-    async function loadUnreadCount() {
+    async function loadNavbarData() {
       if (!user) {
         setUnreadCount(0);
+        setAppStatus(null);
         return;
       }
+
       try {
+        // Fetch unread notifications count
         const { count, error } = await supabase
           .from("notifications")
           .select("*", { count: "exact", head: true })
@@ -48,15 +43,30 @@ export default function Navbar() {
         if (!ignore && !error && count !== null) {
           setUnreadCount(count);
         }
+
+        // Check if user has a pending mentor application
+        const { data: mentorData } = await supabase
+          .from("mentor_profiles")
+          .select("verification_status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!ignore) {
+          if (mentorData?.verification_status) {
+            setAppStatus(mentorData.verification_status);
+          } else if (profile?.teacher_verification_status) {
+            setAppStatus(profile.teacher_verification_status);
+          }
+        }
       } catch (err) {
-        console.error("Failed to load notifications count:", err);
+        console.error("Failed to load navbar telemetry:", err);
       }
     }
 
-    loadUnreadCount();
+    loadNavbarData();
 
     const channel = supabase
-      .channel("user-notifications-channel")
+      .channel("navbar-telemetry-channel")
       .on(
         "postgres_changes",
         {
@@ -66,7 +76,7 @@ export default function Navbar() {
           filter: user ? `user_id=eq.${user.id}` : undefined,
         },
         () => {
-          loadUnreadCount();
+          loadNavbarData();
         }
       )
       .subscribe();
@@ -75,24 +85,60 @@ export default function Navbar() {
       ignore = true;
       supabase.removeChannel(channel);
     };
-  }, [user, pathname]);
+  }, [user, pathname, profile]);
 
-const getDashboardHref = () => {
-  if (!profile) return "/dashboard/student";
-  switch (profile.role) {
-    case "admin":
-      return "/dashboard/admin";
-    case "teacher":
-      return "/dashboard/teacher";
-    case "mentor":
-      return "/dashboard/mentor";
-    default:
-      return "/dashboard/student";
-  }
-};
+  const getDashboardHref = () => {
+    if (!profile) return "/dashboard/student";
+    switch (profile.role) {
+      case "admin":
+        return "/dashboard/admin";
+      case "teacher":
+        return "/dashboard/teacher";
+      case "mentor":
+        return "/dashboard/mentor";
+      default:
+        return "/dashboard/student";
+    }
+  };
+
+  // Dynamic Navigation Links based on User Role
+  const getNavLinks = () => {
+    const role = profile?.role;
+    if (role === "mentor") {
+      return [
+        { href: "/dashboard/mentor", label: "Mentor Hub" },
+        { href: "/scholarships", label: "Scholarships" },
+        { href: "/community", label: "Community" },
+      ];
+    }
+    if (role === "teacher") {
+      return [
+        { href: "/dashboard/teacher", label: "Teacher Hub" },
+        { href: "/courses", label: "Courses" },
+        { href: "/community", label: "Community" },
+      ];
+    }
+    if (role === "admin") {
+      return [
+        { href: "/dashboard/admin", label: "Admin Hub" },
+        { href: "/scholarships", label: "Scholarships" },
+        { href: "/community", label: "Community" },
+      ];
+    }
+    return [
+      { href: "/courses", label: "Courses" },
+      { href: "/practice", label: "Practice" },
+      { href: "/flashcards", label: "Flashcards" },
+      { href: "/scholarships", label: "Scholarships" },
+      { href: "/community", label: "Community" },
+      { href: "/mentors", label: "Mentors" },
+    ];
+  };
+
+  const navLinks = getNavLinks();
 
   return (
-    <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/80">
+    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
@@ -131,7 +177,7 @@ const getDashboardHref = () => {
           </div>
 
           {/* Right Action Items */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2.5">
             {user ? (
               <>
                 <Link
@@ -153,6 +199,15 @@ const getDashboardHref = () => {
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl transition shadow-2xs"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                  {appStatus === "pending" || appStatus === "under_review" ? (
+                    <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-amber-400 text-slate-900">
+                      Pending
+                    </span>
+                  ) : profile?.role && profile.role !== "student" ? (
+                    <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-white/20 text-white">
+                      {profile.role}
+                    </span>
+                  ) : null}
                 </Link>
 
                 <Link
@@ -164,8 +219,9 @@ const getDashboardHref = () => {
                 </Link>
 
                 <button
+                  type="button"
                   onClick={() => signOut()}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -191,20 +247,10 @@ const getDashboardHref = () => {
 
           {/* Mobile Menu Toggle */}
           <div className="flex md:hidden items-center gap-2">
-            {user && (
-              <Link
-                href="/notifications"
-                className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
-              >
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
-                )}
-              </Link>
-            )}
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
               aria-label="Toggle navigation"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -225,9 +271,7 @@ const getDashboardHref = () => {
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block px-3 py-2 rounded-xl text-sm font-semibold ${
-                    isActive
-                      ? "bg-[#74B49B]/15 text-[#427563]"
-                      : "text-slate-700 hover:bg-slate-50"
+                    isActive ? "bg-[#74B49B]/15 text-[#427563]" : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   {link.label}
@@ -240,25 +284,22 @@ const getDashboardHref = () => {
             {user ? (
               <>
                 <Link
-                  href="/notifications"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-[#74B49B]" /> Notifications
-                  </div>
-                  {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-600 rounded-full border border-rose-200">
-                      {unreadCount} unread
-                    </span>
-                  )}
-                </Link>
-                <Link
                   href={getDashboardHref()}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold bg-[#74B49B] text-white"
+                  className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-sm font-semibold bg-[#74B49B] text-white"
                 >
-                  <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
+                  <span className="flex items-center gap-2">
+                    <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
+                  </span>
+                  {appStatus === "pending" || appStatus === "under_review" ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-400 text-slate-900">
+                      Pending
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-white/20 text-white">
+                      {profile?.role || "student"}
+                    </span>
+                  )}
                 </Link>
                 <Link
                   href="/profile"
@@ -268,11 +309,12 @@ const getDashboardHref = () => {
                   <User className="w-4 h-4" /> Profile Settings
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     signOut();
                   }}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 text-left"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 text-left cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" /> Sign Out
                 </button>

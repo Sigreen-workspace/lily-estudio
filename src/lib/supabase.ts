@@ -9,6 +9,9 @@ export type UserRole = "student" | "teacher" | "mentor" | "admin";
 export type AcademicTrack = "school" | "college" | "competitive_exam" | "study_abroad" | "skill";
 export type ContentStatus = "draft" | "submitted" | "published" | "archived";
 export type MentorshipStatus = "pending" | "accepted" | "declined" | "completed" | "cancelled";
+export type TeacherVerificationStatus = "none" | "pending" | "under_review" | "approved" | "rejected";
+export type MentorVerificationStatus = "pending" | "under_review" | "approved" | "rejected";
+export type ContentReviewStatus = "draft" | "submitted" | "approved" | "rejected" | "published";
 
 export interface Board {
   id: string;
@@ -55,16 +58,16 @@ export interface Topic {
 
 export interface UserProfile {
   id: string;
-  full_name: string;
-  avatar_url: string | null;
+  full_name?: string;
+  avatar_url?: string | null;
   role: UserRole;
-  education_level: string | null;
-  institution: string | null;
-  class_semester: string | null;
-  course_branch: string | null;
-  interests: string[] | null;
-  country: string | null;
-  learning_preference: string | null;
+  education_level?: string | null;
+  institution?: string | null;
+  class_semester?: string | null;
+  course_branch?: string | null;
+  interests?: string[] | null;
+  country?: string | null;
+  learning_preference?: string | null;
   target_track?: AcademicTrack | null;
   selected_program_id?: string | null;
   bio?: string | null;
@@ -78,8 +81,28 @@ export interface UserProfile {
   expertise_tracks?: AcademicTrack[] | null;
   languages_spoken?: string[] | null;
   max_active_mentees?: number | null;
+
+  // Teacher Verification
+  teacher_verification_status?: TeacherVerificationStatus;
+  is_teacher_verified?: boolean;
+  verification_submitted_at?: string | null;
+  verified_at?: string | null;
+  verification_notes?: string | null;
+  institution_email?: string | null;
+  credentials_url?: string | null;
+
+  // Admin Delegation & Multi-Role
+  assigned_roles?: string[];
+  admin_verification_status?: string | null;
+  admin_application_reason?: string | null;
+
+  // Moderation and Security (Phase 15)
+  account_status?: "active" | "warned" | "suspended" | "banned";
+  warning_message?: string;
+  suspended_until?: string;
+
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export type Profile = UserProfile;
@@ -89,13 +112,16 @@ export interface MentorshipRequest {
   student_id: string;
   mentor_id: string;
   topic: string;
-  academic_track: AcademicTrack;
-  message: string;
+  academic_track?: AcademicTrack;
+  message?: string;
+  notes?: string;
+  student_name?: string;
+  student_email?: string;
   status: MentorshipStatus;
   mentor_response?: string | null;
   session_schedule?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   profiles?: UserProfile;
 }
 
@@ -197,7 +223,7 @@ export interface TestAttempt {
   tests?: PracticeTest;
 }
 
-// Phase 7 Flashcard Engine Types
+// Flashcard Engine
 export interface FlashcardDeck {
   id: string;
   created_by: string | null;
@@ -234,7 +260,7 @@ export interface FlashcardReview {
   next_review_at: string;
 }
 
-// Phase 8 Personal Dashboard & Authentic Progress Types
+// Personal Dashboard & Learning Progress
 export interface UserCourseProgress {
   id: string;
   user_id: string;
@@ -277,7 +303,7 @@ export interface UserActivityLog {
   created_at: string;
 }
 
-// Phase 9 Scholarship Engine Types
+// Scholarship Engine
 export type ScholarshipApplicationStatus =
   | "interested"
   | "planning"
@@ -295,7 +321,7 @@ export interface Scholarship {
   degree_field: string;
   eligibility_criteria: string;
   deadline_date: string | null;
-  requirements: string | null;
+  requirements?: string | null;
   amount_benefit: string;
   official_url: string;
   description: string;
@@ -303,7 +329,7 @@ export interface Scholarship {
   is_demo: boolean;
   last_verified_at: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface StudentScholarshipTracker {
@@ -318,7 +344,7 @@ export interface StudentScholarshipTracker {
   scholarships?: Scholarship;
 }
 
-// Phase 10 Notification & Reminder Types
+// Notifications
 export type NotificationType =
   | "scholarship_deadline"
   | "saved_learning_reminder"
@@ -353,7 +379,7 @@ export interface UserNotificationPreferences {
   updated_at: string;
 }
 
-// Phase 11 Community Forum Types
+// Community Forum
 export type CommunityCategory =
   | "school"
   | "college"
@@ -405,20 +431,7 @@ export interface ForumReport {
   created_at: string;
 }
 
-// Phase 12 Admin Governance & Mentor Profile Types
-export type ContentReviewStatus =
-  | "draft"
-  | "submitted"
-  | "approved"
-  | "rejected"
-  | "published";
-
-export type MentorVerificationStatus =
-  | "pending"
-  | "under_review"
-  | "approved"
-  | "rejected";
-
+// Mentor Profiles & Governance
 export interface MentorProfile {
   id: string;
   user_id: string;
@@ -445,48 +458,6 @@ export interface AdminStatsOverview {
   pendingReports: number;
 }
 
-export type TeacherVerificationStatus =
-  | "pending"
-  | "under_review"
-  | "approved"
-  | "rejected";
-
-export interface UserProfile {
-  id: string;
-  full_name: string;
-  avatar_url: string | null;
-  role: UserRole;
-  education_level: string | null;
-  institution: string | null;
-  class_semester: string | null;
-  course_branch: string | null;
-  interests: string[] | null;
-  country: string | null;
-  learning_preference: string | null;
-  target_track?: AcademicTrack | null;
-  selected_program_id?: string | null;
-  bio?: string | null;
-  qualifications?: string | null;
-  experience_years?: number | null;
-  teaching_subjects?: string[] | null;
-  teaching_classes?: string[] | null;
-  boards_systems?: string[] | null;
-  is_available_for_mentorship?: boolean | null;
-  mentorship_topics?: string[] | null;
-  expertise_tracks?: AcademicTrack[] | null;
-  languages_spoken?: string[] | null;
-  max_active_mentees?: number | null;
-  teacher_verification_status?: TeacherVerificationStatus;
-  is_teacher_verified?: boolean;
-  verification_submitted_at?: string | null;
-  verified_at?: string | null;
-  verification_notes?: string | null;
-  institution_email?: string | null;
-  credentials_url?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface PlatformFeedback {
   id: string;
   user_id?: string | null;
@@ -506,6 +477,7 @@ export interface SocialContactsSettings {
   linkedin: string;
   github: string;
   twitter: string;
+  instagram?: string;
   telegram?: string;
   whatsapp?: string;
 }
@@ -517,18 +489,15 @@ export interface SocialContactsSettings {
 export function sanitizeUrl(url?: string | null): string {
   if (!url) return "#";
   const trimmed = url.trim();
-  
-  // Allow relative local routes
+
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
     return trimmed;
   }
-  
-  // Enforce HTTP / HTTPS protocols
+
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed;
   }
-  
-  // Block dangerous schemes
+
   return "#";
 }
 
@@ -542,16 +511,4 @@ export function sanitizeText(input?: string | null): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
-}
-
-export interface SocialContactsSettings {
-  email: string;
-  lead_email: string;
-  youtube: string;
-  linkedin: string;
-  github: string;
-  twitter: string;
-  instagram?: string;
-  telegram?: string;
-  whatsapp?: string;
 }

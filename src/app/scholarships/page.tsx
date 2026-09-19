@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export default function ScholarshipsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [trackedIds, setTrackedIds] = useState<Record<string, ScholarshipApplicationStatus>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,6 +69,24 @@ export default function ScholarshipsPage() {
       ignore = true;
     };
   }, [user]);
+
+  // Mentor role check placed safely after all hooks
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <Link
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </Link>
+      </div>
+    );
+  }
 
   const handleTrackScholarship = async (scholarship: Scholarship) => {
     if (!user) {
@@ -342,7 +360,7 @@ export default function ScholarshipsPage() {
                     <button
                       onClick={() => handleTrackScholarship(s)}
                       disabled={savingId === s.id}
-                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-semibold transition text-xs shadow-2xs ${
+                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-semibold transition text-xs shadow-2xs cursor-pointer ${
                         isTracked
                           ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                           : "bg-[#74B49B] hover:bg-[#5f9c85] text-white"

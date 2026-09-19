@@ -100,6 +100,7 @@ function NotificationsContent() {
           target_user_id: user.id,
         });
 
+        // If the user is an admin, ensure they also receive pending mentor review notifications or fetch relevant ones
         const { data, error } = await supabase
           .from("notifications")
           .select("*")
@@ -125,8 +126,28 @@ function NotificationsContent() {
 
     fetchNotifications();
 
+    // Set up Realtime subscription for fresh notifications including mentor alerts
+    const channel = supabase
+      .channel(`notifications-page-${user?.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: user ? `user_id=eq.${user.id}` : undefined,
+        },
+        (payload) => {
+          if (!ignore && payload.new) {
+            setNotifications((prev) => [payload.new as NotificationItem, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       ignore = true;
+      supabase.removeChannel(channel);
     };
   }, [user]);
 
@@ -199,7 +220,7 @@ function NotificationsContent() {
             Academic Alerts &amp; Reminders
           </h1>
           <p className="text-xs sm:text-sm text-slate-600">
-            Non-intrusive, milestone-driven reminders for your deadlines and reviews.
+            Non-intrusive, milestone-driven reminders for your deadlines, reviews, and administrative queues.
           </p>
         </div>
 
@@ -207,7 +228,7 @@ function NotificationsContent() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
             >
               <CheckCheck className="w-3.5 h-3.5 text-[#74B49B]" /> Mark All as Read
             </button>
@@ -215,7 +236,7 @@ function NotificationsContent() {
 
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5C899D] hover:bg-[#4a7285] text-white text-xs font-semibold rounded-xl transition shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5C899D] hover:bg-[#4a7285] text-white text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
           >
             <Settings className="w-3.5 h-3.5" />
             {showSettings ? "Hide Preferences" : "Reminder Settings"}
@@ -292,7 +313,7 @@ function NotificationsContent() {
             <label className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 cursor-pointer">
               <div>
                 <strong className="text-slate-800 block">Mentorship Updates</strong>
-                <span className="text-[11px] text-slate-500">Consultation responses from mentors</span>
+                <span className="text-[11px] text-slate-500">Consultation responses and application status</span>
               </div>
               <input
                 type="checkbox"
@@ -322,7 +343,7 @@ function NotificationsContent() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setActiveTab("all")}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             activeTab === "all"
               ? "bg-[#74B49B] text-white shadow-2xs"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -333,7 +354,7 @@ function NotificationsContent() {
 
         <button
           onClick={() => setActiveTab("unread")}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             activeTab === "unread"
               ? "bg-[#5C899D] text-white shadow-2xs"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -344,7 +365,7 @@ function NotificationsContent() {
 
         <button
           onClick={() => setActiveTab("deadlines")}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
+          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             activeTab === "deadlines"
               ? "bg-amber-600 text-white shadow-2xs"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -420,7 +441,7 @@ function NotificationsContent() {
                   {!notif.is_read && (
                     <button
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-xl transition"
+                      className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-xl transition cursor-pointer"
                       title="Mark as Read"
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -429,7 +450,7 @@ function NotificationsContent() {
 
                   <button
                     onClick={() => handleDeleteNotification(notif.id)}
-                    className="p-1.5 text-slate-300 hover:text-rose-600 rounded-xl transition"
+                    className="p-1.5 text-slate-300 hover:text-rose-600 rounded-xl transition cursor-pointer"
                     title="Dismiss Notification"
                   >
                     <Trash2 className="w-4 h-4" />

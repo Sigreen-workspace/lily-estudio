@@ -18,11 +18,13 @@ import {
   GraduationCap
 } from "lucide-react";
 import { supabase, Course, Resource } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { isCourseSaved, toggleSaveCourse } from "@/lib/bookmarks";
 
 export default function CourseDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
+  const { profile } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [resources, setResources] = useState<Resource[]>([]);
@@ -79,6 +81,24 @@ export default function CourseDetailPage() {
       ignore = true;
     };
   }, [slug]);
+
+  // Mentor role check placed safely after all hooks
+  if (profile?.role === "mentor") {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-800">Mentor Portal Access</h2>
+        <p className="text-xs text-slate-500">
+          As an academic mentor, your workspace is dedicated to managing student appointments and advisory requests.
+        </p>
+        <Link
+          href="/dashboard/mentor"
+          className="inline-block px-5 py-2.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl shadow-xs"
+        >
+          Go to Mentor Hub
+        </Link>
+      </div>
+    );
+  }
 
   const handleToggleBookmark = () => {
     if (course) {
