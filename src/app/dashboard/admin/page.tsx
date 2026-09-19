@@ -105,53 +105,52 @@ function AdminDashboardContent() {
   useEffect(() => {
     let ignore = false;
 
- async function loadAdminData() {
-  try {
-    const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, adminAppRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
-      supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
-      supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }), // Profiles join hata kar direct fetch karein
-      supabase.from("forum_reports").select("*").order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("*")
-        .or("role.eq.teacher,teacher_verification_status.in.(pending,under_review)")
-        .order("created_at", { ascending: false }),
-      supabase.from("scholarships").select("*").order("created_at", { ascending: false }),
-      supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
-      supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
-      supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
-    ]);
+    async function loadAdminData() {
+      try {
+        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, adminAppRes] = await Promise.all([
+          supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
+          supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
+          supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }),
+          supabase.from("forum_reports").select("*").order("created_at", { ascending: false }),
+          supabase
+            .from("profiles")
+            .select("*")
+            .or("role.eq.teacher,teacher_verification_status.in.(pending,under_review)")
+            .order("created_at", { ascending: false }),
+          supabase.from("scholarships").select("*").order("created_at", { ascending: false }),
+          supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
+          supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
+          supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
+        ]);
 
-    if (!ignore) {
-      if (uRes.data) setUsersList(uRes.data as UserProfile[]);
-      if (cRes.data) setCoursesList(cRes.data as Course[]);
-      
-      // Agar mentor profiles aayi hain, toh unhe profiles ke sath map kar lein
-      if (mRes.data && uRes.data) {
-        const enrichedMentors = mRes.data.map((mentor) => {
-          const matchedProfile = uRes.data.find((p) => p.id === mentor.user_id);
-          return {
-            ...mentor,
-            profiles: matchedProfile || null,
-          };
-        });
-        setMentorsList(enrichedMentors as MentorProfile[]);
+        if (!ignore) {
+          if (uRes.data) setUsersList(uRes.data as UserProfile[]);
+          if (cRes.data) setCoursesList(cRes.data as Course[]);
+          
+          if (mRes.data && uRes.data) {
+            const enrichedMentors = mRes.data.map((mentor) => {
+              const matchedProfile = uRes.data.find((p) => p.id === mentor.user_id);
+              return {
+                ...mentor,
+                profiles: matchedProfile || null,
+              };
+            });
+            setMentorsList(enrichedMentors as MentorProfile[]);
+          }
+
+          if (rRes.data) setReportsList(rRes.data as ForumReport[]);
+          if (tRes.data) setTeachersList(tRes.data as UserProfile[]);
+          if (sRes.data) setScholarshipsList(sRes.data as Scholarship[]);
+          if (fRes.data) setFeedbacksList(fRes.data as PlatformFeedback[]);
+          if (setRes.data?.value) setSocials(setRes.data.value as SocialContactsSettings);
+          if (adminAppRes.data) setAdminApplicants(adminAppRes.data as UserProfile[]);
+        }
+      } catch (err) {
+        console.error("Failed to load admin telemetry:", err);
+      } finally {
+        if (!ignore) setLoading(false);
       }
-
-      if (rRes.data) setReportsList(rRes.data as ForumReport[]);
-      if (tRes.data) setTeachersList(tRes.data as UserProfile[]);
-      if (sRes.data) setScholarshipsList(sRes.data as Scholarship[]);
-      if (fRes.data) setFeedbacksList(fRes.data as PlatformFeedback[]);
-      if (setRes.data?.value) setSocials(setRes.data.value as SocialContactsSettings);
-      if (adminAppRes.data) setAdminApplicants(adminAppRes.data as UserProfile[]);
     }
-  } catch (err) {
-    console.error("Failed to load admin telemetry:", err);
-  } finally {
-    if (!ignore) setLoading(false);
-  }
-}
 
     loadAdminData();
 
@@ -293,7 +292,7 @@ function AdminDashboardContent() {
     }
   };
 
-  // Teacher Review Action via RPC
+  // Teacher Review Action via RPC (Fixed ENUM type mismatch)
   const handleReviewTeacher = async (
     teacherId: string,
     status: "approved" | "under_review" | "rejected"
@@ -321,6 +320,7 @@ function AdminDashboardContent() {
           )
         );
         setActionReason("");
+        alert(`Teacher verification status successfully updated to ${status}!`);
       } else {
         alert("Failed to update teacher verification status: " + error.message);
       }
@@ -1530,16 +1530,6 @@ function AdminDashboardContent() {
                           >
                             {u.account_status || "active"}
                           </span>
-                          {u.account_status === "warned" && u.warning_message && (
-                            <p className="text-[10px] text-amber-700 italic mt-0.5 max-w-xs truncate">
-                              &quot;{u.warning_message}&quot;
-                            </p>
-                          )}
-                          {u.account_status === "suspended" && u.suspended_until && (
-                            <p className="text-[10px] text-rose-600 mt-0.5">
-                              Until: {new Date(u.suspended_until).toLocaleDateString()}
-                            </p>
-                          )}
                         </td>
                         <td className="py-2.5 px-3">
                           {u.role !== "admin" ? (
@@ -1550,7 +1540,6 @@ function AdminDashboardContent() {
                                   onClick={() => handleModerateUser(u.id, "warned")}
                                   disabled={processingId === u.id}
                                   className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold rounded-lg border border-amber-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                  title="Send Official Warning"
                                 >
                                   <AlertTriangle className="w-3 h-3 text-amber-600" /> Warn
                                 </button>
@@ -1562,7 +1551,6 @@ function AdminDashboardContent() {
                                   onClick={() => handleModerateUser(u.id, "active")}
                                   disabled={processingId === u.id}
                                   className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                  title="Reactivate Account"
                                 >
                                   <RotateCcw className="w-3 h-3 text-emerald-600" /> Unblock
                                 </button>
@@ -1572,30 +1560,27 @@ function AdminDashboardContent() {
                                   onClick={() => handleModerateUser(u.id, "suspended", 24)}
                                   disabled={processingId === u.id}
                                   className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                  title="Suspend for 24 Hours"
                                 >
                                   <Ban className="w-3 h-3 text-rose-600" /> Suspend
                                 </button>
                               )}
 
-                              {u.role === "teacher" || u.role === "mentor" ? (
+                              {(u.role === "teacher" || u.role === "mentor") && (
                                 <button
                                   type="button"
                                   onClick={() => handleDemoteUser(u.id, u.full_name || "")}
                                   disabled={processingId === u.id}
                                   className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                  title="Demote to Student"
                                 >
                                   <UserX className="w-3 h-3 text-indigo-600" /> Demote
                                 </button>
-                              ) : null}
+                              )}
 
                               <button
                                 type="button"
                                 onClick={() => handleDeleteUser(u.id, u.full_name || "")}
                                 disabled={processingId === u.id}
                                 className="px-2 py-1 bg-rose-700 hover:bg-rose-800 text-white text-[10px] font-bold rounded-lg transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                title="Permanently Delete Account"
                               >
                                 <Trash2 className="w-3 h-3 text-white" /> Delete
                               </button>
