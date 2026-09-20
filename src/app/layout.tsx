@@ -19,7 +19,8 @@ export default function RootLayout({
       <body className="antialiased min-h-screen flex flex-col bg-[#F8FAF8] text-slate-800">
         <AuthProvider>
           <Header />
-          <main className="flex-1">{children}</main>
+          {/* min-h-[calc(100vh-140px)] reserves the space instantly to prevent footer shifting */}
+          <main className="flex-1 w-full min-h-[calc(100vh-140px)]">{children}</main>
           <Footer />
         </AuthProvider>
       </body>
