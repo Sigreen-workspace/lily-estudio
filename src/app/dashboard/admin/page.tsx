@@ -292,7 +292,7 @@ function AdminDashboardContent() {
     }
   };
 
-  // Teacher Review Action via RPC (Fixed ENUM type mismatch)
+  // Teacher Review Action via RPC
   const handleReviewTeacher = async (
     teacherId: string,
     status: "approved" | "under_review" | "rejected"
@@ -473,7 +473,7 @@ function AdminDashboardContent() {
     }
   };
 
-  // Feedback Status Update
+  // Feedback Status Update & Deletion
   const handleUpdateFeedbackStatus = async (id: string, newStatus: "in_review" | "resolved") => {
     setProcessingId(id);
     try {
@@ -492,7 +492,22 @@ function AdminDashboardContent() {
     }
   };
 
-  // Report Resolution
+  const handleDeleteFeedback = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this suggestion/feedback?")) return;
+    setProcessingId(id);
+    try {
+      const { error } = await supabase.from("platform_feedbacks").delete().eq("id", id);
+      if (!error) {
+        setFeedbacksList((prev) => prev.filter((f) => f.id !== id));
+      } else {
+        alert("Failed to delete feedback: " + error.message);
+      }
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Report Resolution & Deletion
   const handleResolveReport = async (reportId: string, resolution: "resolved" | "dismissed") => {
     setProcessingId(reportId);
     try {
@@ -505,6 +520,21 @@ function AdminDashboardContent() {
         setReportsList((prev) =>
           prev.map((r) => (r.id === reportId ? { ...r, status: resolution } : r))
         );
+      }
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    if (!confirm("Are you sure you want to delete this report log?")) return;
+    setProcessingId(reportId);
+    try {
+      const { error } = await supabase.from("forum_reports").delete().eq("id", reportId);
+      if (!error) {
+        setReportsList((prev) => prev.filter((r) => r.id !== reportId));
+      } else {
+        alert("Failed to delete report: " + error.message);
       }
     } finally {
       setProcessingId(null);
@@ -1082,6 +1112,15 @@ function AdminDashboardContent() {
                             Mark Resolved
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFeedback(fb.id)}
+                          disabled={processingId === fb.id}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 inline-flex items-center gap-1 cursor-pointer"
+                          title="Delete Suggestion"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1479,6 +1518,15 @@ function AdminDashboardContent() {
                             </button>
                           </>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReport(r.id)}
+                          disabled={processingId === r.id}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 inline-flex items-center gap-1 cursor-pointer"
+                          title="Delete Report Log"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
                       </div>
                     </div>
                   ))}

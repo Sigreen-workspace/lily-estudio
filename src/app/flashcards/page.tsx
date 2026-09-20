@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, FlashcardDeck, AcademicTrack } from "@/lib/supabase";
 import {
@@ -17,6 +18,7 @@ import {
 
 export default function FlashcardsPage() {
   const { user, profile } = useAuth();
+  const router = useRouter();
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "my">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,7 +87,6 @@ export default function FlashcardsPage() {
     setCreating(true);
 
     try {
-      // Students cannot create public decks, forced to be private
       const finalIsPublic = isTeacherOrAdmin ? newIsPublic : false;
 
       const { data, error } = await supabase
@@ -104,12 +105,16 @@ export default function FlashcardsPage() {
 
       if (error) throw error;
 
-      setDecks((prev) => [data as FlashcardDeck, ...prev]);
       setShowCreateModal(false);
       setNewTitle("");
       setNewDescription("");
       setNewSubject("");
       setNewIsPublic(false);
+
+      // Deck banne ke baad seedhe us deck ke study/management page par redirect karein jahan multiple cards add kiye ja sakein
+      if (data) {
+        router.push(`/flashcards/${data.id}`);
+      }
     } catch {
       alert("Failed to create deck.");
     } finally {
@@ -371,7 +376,6 @@ export default function FlashcardsPage() {
                 </div>
               </div>
 
-              {/* Show public checkbox ONLY if user is Teacher or Admin */}
               {isTeacherOrAdmin ? (
                 <div className="flex items-center gap-2 pt-1">
                   <input
@@ -404,7 +408,7 @@ export default function FlashcardsPage() {
                   disabled={creating}
                   className="px-5 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
                 >
-                  {creating ? "Creating..." : "Create Deck"}
+                  {creating ? "Creating..." : "Create Deck & Add Cards"}
                 </button>
               </div>
             </form>

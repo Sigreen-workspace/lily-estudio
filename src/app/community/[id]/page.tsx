@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Trash2,
   ThumbsUp,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function PostDetailPage({
@@ -192,31 +193,49 @@ export default function PostDetailPage({
 
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newAnswer.trim()) return;
+    if (!user) {
+      alert("Please sign in to post a solution.");
+      return;
+    }
+    if (!newAnswer.trim()) {
+      alert("Please write a response before submitting.");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("forum_answers").insert({
+      // 1. Insert answer into forum_answers table
+      const { error: insertError } = await supabase.from("forum_answers").insert({
         post_id: postId,
         author_id: user.id,
         content: newAnswer.trim(),
       });
 
-      if (!error) {
-        setNewAnswer("");
-        if (post) {
-          await supabase
-            .from("forum_posts")
-            .update({ answers_count: post.answers_count + 1 })
-            .eq("id", postId);
-        }
-        await reloadPostAndAnswers();
-      }
+      if (insertError) throw new Error(insertError.message);
+
+      // 2. Fetch total actual answers count and update forum_posts
+      const { count } = await supabase
+        .from("forum_answers")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", postId);
+
+      const totalCount = count || 0;
+
+      await supabase
+        .from("forum_posts")
+        .update({ answers_count: totalCount })
+        .eq("id", postId);
+
+      setNewAnswer("");
+      await reloadPostAndAnswers();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      alert("Failed to post solution: " + msg);
     } finally {
       setSubmitting(false);
     }
   };
-
+  
   const handleMarkAccepted = async (answerId: string) => {
     if (!user || user.id !== post?.author_id) return;
 
@@ -309,6 +328,10 @@ export default function PostDetailPage({
   }
 
   const isAdmin = profile?.role === "admin" || profile?.assigned_roles?.includes("admin");
+  const isTeacher = profile?.role === "teacher" || profile?.is_teacher_verified;
+  const isMentor = profile?.role === "mentor";
+  const canAnswer = Boolean(isAdmin || isTeacher || isMentor);
+
   const isPostAuthor = user?.id === post.author_id;
   const isPostUpvoted = userUpvotes.has(post.id);
 
@@ -351,7 +374,7 @@ export default function PostDetailPage({
             {user && (
               <button
                 onClick={() => setReportTarget({ type: "post", id: post.id })}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 transition"
+                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 transition cursor-pointer"
                 title="Report Question"
               >
                 <Flag className="w-3 h-3" /> Report
@@ -395,7 +418,7 @@ export default function PostDetailPage({
       {/* Answers Section Header */}
       <div className="flex items-center justify-between pt-2">
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <MessageCircle className="w-4 h-4 text-[#74B49B]" /> {answers.length} Responses
+          <MessageCircle className="w-4 h-4 text-[#74B49B]" /> {answers.length} {answers.length === 1 ? "Response" : "Responses"}
         </h2>
       </div>
 
@@ -485,34 +508,44 @@ export default function PostDetailPage({
         })}
       </div>
 
-      {/* Answer Form */}
+      {/* Answer Form (Restricted to Teachers, Mentors, and Admins) */}
       {user ? (
-        <form
-          onSubmit={handleSubmitAnswer}
-          className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-3"
-        >
-          <label className="block text-xs font-bold text-slate-800">
-            Share Your Knowledge or Solution
-          </label>
-          <textarea
-            rows={4}
-            required
-            placeholder="Write a clear, academic answer. Reference textbooks or equations where applicable..."
-            value={newAnswer}
-            onChange={(e) => setNewAnswer(e.target.value)}
-            className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
-          />
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              {submitting ? "Posting..." : "Post Solution"}
-            </button>
+        canAnswer ? (
+          <form
+            onSubmit={handleSubmitAnswer}
+            className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-3"
+          >
+            <label className="block text-xs font-bold text-slate-800">
+              Share Your Knowledge or Solution (Educator / Mentor Portal)
+            </label>
+            <textarea
+              rows={4}
+              required
+              placeholder="Write a clear, academic answer. Reference textbooks or equations where applicable..."
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+            />
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {submitting ? "Posting..." : "Post Solution"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="p-6 bg-amber-50/50 border border-amber-200/80 rounded-3xl text-center space-y-2">
+            <ShieldAlert className="w-6 h-6 text-amber-600 mx-auto" />
+            <h3 className="text-xs font-bold text-slate-800">Educator &amp; Mentor Privilege Only</h3>
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
+              Only verified teachers, academic mentors, and administrators are permitted to post answers and solutions in this academic network.
+            </p>
           </div>
-        </form>
+        )
       ) : (
         <div className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-center space-y-2">
           <p className="text-xs text-slate-600">Want to participate in this discussion?</p>
@@ -520,7 +553,7 @@ export default function PostDetailPage({
             href="/auth/login"
             className="inline-block px-4 py-1.5 bg-[#5C899D] text-white text-xs font-semibold rounded-xl"
           >
-            Sign In to Answer
+            Sign In to Account
           </Link>
         </div>
       )}
