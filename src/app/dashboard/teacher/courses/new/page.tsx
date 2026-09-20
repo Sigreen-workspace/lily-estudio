@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, AcademicProgram, ContentStatus } from "@/lib/supabase";
-import { ArrowLeft, BookOpen, AlertCircle, Save, Send } from "lucide-react";
+import { ArrowLeft, BookOpen, AlertCircle, Save, Send, Search } from "lucide-react";
 
 type CourseLevel = "Beginner" | "Intermediate" | "Advanced" | "All Levels";
 
@@ -26,8 +26,14 @@ function NewCourseForm() {
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<CourseLevel>("Beginner");
   const [estimatedHours, setEstimatedHours] = useState("10");
-  const [programId, setProgramId] = useState("");
+  
+  // Searchable Program States
   const [programs, setPrograms] = useState<AcademicProgram[]>([]);
+  const [programId, setProgramId] = useState("");
+  const [programSearch, setProgramSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,14 +46,32 @@ function NewCourseForm() {
         .order("title", { ascending: true });
       if (!ignore && data) {
         setPrograms(data);
-        if (data.length > 0) setProgramId(data[0].id);
+        if (data.length > 0) {
+          setProgramId(data[0].id);
+          setProgramSearch(data[0].title + (data[0].track ? ` (${data[0].track})` : ""));
+        }
       }
     }
     loadPrograms();
+
+    // Close dropdown on outside click
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       ignore = true;
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const filteredPrograms = programs.filter((p) =>
+    p.title.toLowerCase().includes(programSearch.toLowerCase()) ||
+    (p.track && p.track.toLowerCase().includes(programSearch.toLowerCase()))
+  );
 
   const handleCreate = async (e: React.FormEvent, initialStatus: ContentStatus) => {
     e.preventDefault();
@@ -55,7 +79,6 @@ function NewCourseForm() {
     setLoading(true);
     setError(null);
 
-    // Generate slug from title
     const generatedSlug =
       title
         .toLowerCase()
@@ -128,23 +151,50 @@ function NewCourseForm() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. CBSE Class 10: Complete Trigonometry Foundations"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 bg-white"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Program / Class</label>
-            <select
-              value={programId}
-              onChange={(e) => setProgramId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
-            >
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title} ({p.track})
-                </option>
-              ))}
-            </select>
+          {/* Typable / Searchable Academic Program Field */}
+          <div className="relative" ref={dropdownRef}>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Program / Class (Type to search)</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              <input
+                type="text"
+                value={programSearch}
+                onChange={(e) => {
+                  setProgramSearch(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Type to search academic program..."
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+              />
+            </div>
+
+            {showDropdown && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                {filteredPrograms.length === 0 ? (
+                  <div className="px-4 py-3 text-xs text-slate-400">No programs found</div>
+                ) : (
+                  filteredPrograms.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        setProgramId(p.id);
+                        setProgramSearch(p.title + (p.track ? ` (${p.track})` : ""));
+                        setShowDropdown(false);
+                      }}
+                      className="px-4 py-2.5 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer transition border-b border-slate-50 last:border-none"
+                    >
+                      <span className="font-semibold">{p.title}</span>{" "}
+                      {p.track && <span className="text-slate-400">({p.track})</span>}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -155,7 +205,7 @@ function NewCourseForm() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detail what students will learn, prerequisites, and conceptual scope..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 bg-white"
             />
           </div>
 
@@ -165,12 +215,12 @@ function NewCourseForm() {
               <select
                 value={level}
                 onChange={(e) => setLevel(e.target.value as CourseLevel)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 cursor-pointer"
               >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-                <option value="All Levels">All Levels</option>
+                <option value="Beginner" className="bg-white text-slate-800">Beginner</option>
+                <option value="Intermediate" className="bg-white text-slate-800">Intermediate</option>
+                <option value="Advanced" className="bg-white text-slate-800">Advanced</option>
+                <option value="All Levels" className="bg-white text-slate-800">All Levels</option>
               </select>
             </div>
 
@@ -182,7 +232,7 @@ function NewCourseForm() {
                 max="200"
                 value={estimatedHours}
                 onChange={(e) => setEstimatedHours(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 bg-white"
               />
             </div>
           </div>
@@ -192,7 +242,7 @@ function NewCourseForm() {
               type="button"
               disabled={loading}
               onClick={(e) => handleCreate(e, "draft")}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" /> Save Draft
             </button>
@@ -200,9 +250,9 @@ function NewCourseForm() {
               type="button"
               disabled={loading}
               onClick={(e) => handleCreate(e, "submitted")}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#74B49B] hover:bg-emerald-600 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5" /> Save & Submit for Review
+              <Send className="w-3.5 h-3.5" /> Save &amp; Submit for Review
             </button>
           </div>
         </form>

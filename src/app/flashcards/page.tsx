@@ -32,6 +32,9 @@ export default function FlashcardsPage() {
   const [newIsPublic, setNewIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  // Check if user is teacher or admin
+  const isTeacherOrAdmin = profile?.role === "teacher" || profile?.role === "admin" || profile?.assigned_roles?.includes("admin");
+
   useEffect(() => {
     let ignore = false;
 
@@ -59,7 +62,6 @@ export default function FlashcardsPage() {
     };
   }, [user, activeTab]);
 
-  // Mentor role check placed safely after all hooks
   if (profile?.role === "mentor") {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
@@ -83,6 +85,9 @@ export default function FlashcardsPage() {
     setCreating(true);
 
     try {
+      // Students cannot create public decks, forced to be private
+      const finalIsPublic = isTeacherOrAdmin ? newIsPublic : false;
+
       const { data, error } = await supabase
         .from("flashcard_decks")
         .insert({
@@ -90,7 +95,7 @@ export default function FlashcardsPage() {
           description: newDescription,
           academic_track: newTrack,
           subject_name: newSubject || "General",
-          is_public: newIsPublic,
+          is_public: finalIsPublic,
           created_by: user.id,
           card_count: 0,
         })
@@ -104,6 +109,7 @@ export default function FlashcardsPage() {
       setNewTitle("");
       setNewDescription("");
       setNewSubject("");
+      setNewIsPublic(false);
     } catch {
       alert("Failed to create deck.");
     } finally {
@@ -365,18 +371,25 @@ export default function FlashcardsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="is_public_checkbox"
-                  checked={newIsPublic}
-                  onChange={(e) => setNewIsPublic(e.target.checked)}
-                  className="w-4 h-4 accent-[#74B49B] rounded cursor-pointer"
-                />
-                <label htmlFor="is_public_checkbox" className="text-xs text-slate-600 cursor-pointer">
-                  Make deck publicly available to all students
-                </label>
-              </div>
+              {/* Show public checkbox ONLY if user is Teacher or Admin */}
+              {isTeacherOrAdmin ? (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="is_public_checkbox"
+                    checked={newIsPublic}
+                    onChange={(e) => setNewIsPublic(e.target.checked)}
+                    className="w-4 h-4 accent-[#74B49B] rounded cursor-pointer"
+                  />
+                  <label htmlFor="is_public_checkbox" className="text-xs text-slate-600 cursor-pointer">
+                    Make deck publicly available to all students (Teacher Console)
+                  </label>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400 italic">
+                  Note: As a student, your decks are created as private by default for your personal revision.
+                </p>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button

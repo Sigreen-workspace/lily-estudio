@@ -55,14 +55,14 @@ export default function CoursesPage() {
       try {
         const { data: progData, error: pErr } = await supabase
           .from("academic_programs")
-          .select("*, boards(*)")
+          .select("*") 
           .order("title", { ascending: true });
 
         if (pErr) throw pErr;
 
-        const { data: courseData, error: cErr } = await supabase
+       const { data: courseData, error: cErr } = await supabase
           .from("courses")
-          .select("*, academic_programs:program_id(*), categories:category_id(*), subjects:subject_id(*)")
+          .select("*, academic_programs:program_id(*)")
           .order("created_at", { ascending: false });
 
         if (cErr) throw cErr;

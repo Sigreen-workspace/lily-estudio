@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -23,6 +23,7 @@ import { isCourseSaved, toggleSaveCourse } from "@/lib/bookmarks";
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params?.slug as string;
   const { profile } = useAuth();
 
@@ -42,7 +43,7 @@ export default function CourseDetailPage() {
       try {
         const { data: courseData, error: cErr } = await supabase
           .from("courses")
-          .select("*, academic_programs:program_id(*), categories:category_id(*), subjects:subject_id(*)")
+          .select("*, academic_programs:program_id(*)")
           .eq("slug", slug)
           .single();
 
@@ -168,12 +169,6 @@ export default function CourseDetailPage() {
             <span className="font-medium text-slate-700">{program.title}</span>
           </>
         )}
-        {course.subjects && (
-          <>
-            <span>/</span>
-            <span className="font-medium text-slate-700">{course.subjects.name}</span>
-          </>
-        )}
       </div>
 
       {/* Course Banner */}
@@ -192,16 +187,34 @@ export default function CourseDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Admin Delete Button */}
+            {(profile?.role === "admin" || profile?.assigned_roles?.includes("admin")) && (
+              <button
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to permanently delete this course?")) return;
+                  const { error: delErr } = await supabase.from("courses").delete().eq("id", course.id);
+                  if (!delErr) {
+                    router.push("/courses");
+                  } else {
+                    alert("Failed to delete course: " + delErr.message);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-rose-200 hover:bg-rose-50 transition text-rose-600 cursor-pointer"
+              >
+                Delete Course
+              </button>
+            )}
+
             <button
               onClick={handleToggleBookmark}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 hover:bg-slate-50 transition text-slate-700"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 hover:bg-slate-50 transition text-slate-700 cursor-pointer"
             >
               <Bookmark className={`w-3.5 h-3.5 ${bookmarked ? "fill-[#74B49B] text-[#74B49B]" : ""}`} />
               {bookmarked ? "Saved" : "Save Course"}
             </button>
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 hover:bg-slate-50 transition text-slate-700"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 hover:bg-slate-50 transition text-slate-700 cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5" />
               {copied ? "Link Copied!" : "Share"}
