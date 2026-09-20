@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   supabase,
@@ -17,6 +18,8 @@ import {
   Send,
   X,
   AlertTriangle,
+  Trash2,
+  ThumbsUp,
 } from "lucide-react";
 
 export default function PostDetailPage({
@@ -26,10 +29,12 @@ export default function PostDetailPage({
 }) {
   const resolvedParams = use(params);
   const postId = resolvedParams.id;
+  const router = useRouter();
 
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [post, setPost] = useState<ForumPost | null>(null);
   const [answers, setAnswers] = useState<ForumAnswer[]>([]);
+  const [userUpvotes, setUserUpvotes] = useState<Set<string>>(new Set());
   const [newAnswer, setNewAnswer] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +75,17 @@ export default function PostDetailPage({
             setAnswers(aRes.data as ForumAnswer[]);
           }
         }
+
+        if (user) {
+          const { data: upvoteData } = await supabase
+            .from("forum_upvotes")
+            .select("target_id")
+            .eq("user_id", user.id);
+
+          if (!ignore && upvoteData) {
+            setUserUpvotes(new Set(upvoteData.map((u) => u.target_id)));
+          }
+        }
       } catch (err) {
         console.error("Failed to load discussion:", err);
       } finally {
@@ -84,7 +100,7 @@ export default function PostDetailPage({
     return () => {
       ignore = true;
     };
-  }, [postId]);
+  }, [postId, user]);
 
   const reloadPostAndAnswers = async () => {
     try {
@@ -108,8 +124,69 @@ export default function PostDetailPage({
       if (!aRes.error && aRes.data) {
         setAnswers(aRes.data as ForumAnswer[]);
       }
+
+      if (user) {
+        const { data: upvoteData } = await supabase
+          .from("forum_upvotes")
+          .select("target_id")
+          .eq("user_id", user.id);
+
+        if (upvoteData) {
+          setUserUpvotes(new Set(upvoteData.map((u) => u.target_id)));
+        }
+      }
     } catch (err) {
       console.error("Failed to refresh discussion:", err);
+    }
+  };
+
+  const handleToggleUpvote = async (targetId: string, targetType: "post" | "answer", currentCount: number) => {
+    if (!user) {
+      alert("Please log in to like/upvote discussions.");
+      return;
+    }
+
+    const isUpvoted = userUpvotes.has(targetId);
+    const newCount = isUpvoted ? Math.max(0, currentCount - 1) : currentCount + 1;
+
+    setUserUpvotes((prev) => {
+      const next = new Set(prev);
+      if (isUpvoted) next.delete(targetId);
+      else next.add(targetId);
+      return next;
+    });
+
+    if (targetType === "post") {
+      if (post) setPost({ ...post, upvotes_count: newCount });
+    } else {
+      setAnswers((prev) =>
+        prev.map((a) => (a.id === targetId ? { ...a, upvotes_count: newCount } : a))
+      );
+    }
+
+    try {
+      if (isUpvoted) {
+        await supabase
+          .from("forum_upvotes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("target_type", targetType)
+          .eq("target_id", targetId);
+      } else {
+        await supabase.from("forum_upvotes").insert({
+          user_id: user.id,
+          target_type: targetType,
+          target_id: targetId,
+        });
+      }
+
+      const tableName = targetType === "post" ? "forum_posts" : "forum_answers";
+      await supabase
+        .from(tableName)
+        .update({ upvotes_count: newCount })
+        .eq("id", targetId);
+    } catch {
+      await reloadPostAndAnswers();
     }
   };
 
@@ -160,6 +237,32 @@ export default function PostDetailPage({
     }
   };
 
+  const handleDeletePost = async () => {
+    if (!confirm("Are you sure you want to delete this question?")) return;
+    const { error } = await supabase.from("forum_posts").delete().eq("id", postId);
+    if (!error) {
+      router.push("/community");
+    } else {
+      alert("Failed to delete post: " + error.message);
+    }
+  };
+
+  const handleDeleteAnswer = async (answerId: string) => {
+    if (!confirm("Are you sure you want to delete this answer?")) return;
+    const { error } = await supabase.from("forum_answers").delete().eq("id", answerId);
+    if (!error) {
+      if (post) {
+        await supabase
+          .from("forum_posts")
+          .update({ answers_count: Math.max(0, post.answers_count - 1) })
+          .eq("id", postId);
+      }
+      await reloadPostAndAnswers();
+    } else {
+      alert("Failed to delete answer: " + error.message);
+    }
+  };
+
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !reportTarget) return;
@@ -205,6 +308,10 @@ export default function PostDetailPage({
     );
   }
 
+  const isAdmin = profile?.role === "admin" || profile?.assigned_roles?.includes("admin");
+  const isPostAuthor = user?.id === post.author_id;
+  const isPostUpvoted = userUpvotes.has(post.id);
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <div>
@@ -230,15 +337,27 @@ export default function PostDetailPage({
             )}
           </div>
 
-          {user && (
-            <button
-              onClick={() => setReportTarget({ type: "post", id: post.id })}
-              className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 transition"
-              title="Report Question"
-            >
-              <Flag className="w-3 h-3" /> Report
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {user && (isPostAuthor || isAdmin) && (
+              <button
+                onClick={handleDeletePost}
+                className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-800 font-semibold transition cursor-pointer"
+                title="Delete Question"
+              >
+                <Trash2 className="w-3 h-3" /> Delete
+              </button>
+            )}
+
+            {user && (
+              <button
+                onClick={() => setReportTarget({ type: "post", id: post.id })}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 transition"
+                title="Report Question"
+              >
+                <Flag className="w-3 h-3" /> Report
+              </button>
+            )}
+          </div>
         </div>
 
         <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800">
@@ -249,15 +368,27 @@ export default function PostDetailPage({
           {post.content}
         </p>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
+        {/* Upvote / Like Action Bar */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs">
+          <button
+            onClick={() => handleToggleUpvote(post.id, "post", post.upvotes_count)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+              isPostUpvoted
+                ? "bg-[#74B49B]/10 border-[#74B49B] text-[#427563]"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <ThumbsUp className={`w-3.5 h-3.5 ${isPostUpvoted ? "fill-[#74B49B]" : ""}`} />
+            <span className="font-bold">{post.upvotes_count} Likes</span>
+          </button>
+
+          <div className="flex items-center gap-2 text-slate-500">
             <span className="font-semibold text-slate-700">
               {post.profiles?.full_name || "Scholar"}
             </span>
             <RoleBadge role={post.profiles?.role} />
+            <span>• {new Date(post.created_at).toLocaleDateString()}</span>
           </div>
-
-          <span>Asked on {new Date(post.created_at).toLocaleDateString()}</span>
         </div>
       </div>
 
@@ -270,57 +401,88 @@ export default function PostDetailPage({
 
       {/* Answers List */}
       <div className="space-y-4">
-        {answers.map((ans) => (
-          <div
-            key={ans.id}
-            className={`p-6 rounded-3xl border transition space-y-3 ${
-              ans.is_accepted
-                ? "bg-emerald-50/30 border-emerald-300 ring-1 ring-emerald-300/40"
-                : "bg-white border-slate-200/80 shadow-xs"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-slate-800">
-                  {ans.profiles?.full_name || "Scholar"}
-                </span>
-                <RoleBadge role={ans.profiles?.role} />
-                <span className="text-[10px] text-slate-400">
-                  {new Date(ans.created_at).toLocaleDateString()}
-                </span>
+        {answers.map((ans) => {
+          const isAnswerAuthor = user?.id === ans.author_id;
+          const isAnsUpvoted = userUpvotes.has(ans.id);
+
+          return (
+            <div
+              key={ans.id}
+              className={`p-6 rounded-3xl border transition space-y-3 ${
+                ans.is_accepted
+                  ? "bg-emerald-50/30 border-emerald-300 ring-1 ring-emerald-300/40"
+                  : "bg-white border-slate-200/80 shadow-xs"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-slate-800">
+                    {ans.profiles?.full_name || "Scholar"}
+                  </span>
+                  <RoleBadge role={ans.profiles?.role} />
+                  <span className="text-[10px] text-slate-400">
+                    {new Date(ans.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {ans.is_accepted && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" /> Solution
+                    </span>
+                  )}
+                  {user && user.id === post.author_id && !ans.is_accepted && (
+                    <button
+                      onClick={() => handleMarkAccepted(ans.id)}
+                      className="text-[11px] font-bold text-[#74B49B] hover:underline cursor-pointer"
+                    >
+                      Accept Solution
+                    </button>
+                  )}
+
+                  {user && (isAnswerAuthor || isAdmin) && (
+                    <button
+                      onClick={() => handleDeleteAnswer(ans.id)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                      title="Delete Answer"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  )}
+
+                  {user && (
+                    <button
+                      onClick={() => setReportTarget({ type: "answer", id: ans.id })}
+                      className="text-slate-300 hover:text-rose-500 p-1 cursor-pointer"
+                      title="Report Answer"
+                    >
+                      <Flag className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {ans.is_accepted && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="w-3 h-3" /> Solution
-                  </span>
-                )}
-                {user && user.id === post.author_id && !ans.is_accepted && (
-                  <button
-                    onClick={() => handleMarkAccepted(ans.id)}
-                    className="text-[11px] font-bold text-[#74B49B] hover:underline"
-                  >
-                    Accept Solution
-                  </button>
-                )}
-                {user && (
-                  <button
-                    onClick={() => setReportTarget({ type: "answer", id: ans.id })}
-                    className="text-slate-300 hover:text-rose-500 p-1"
-                    title="Report Answer"
-                  >
-                    <Flag className="w-3 h-3" />
-                  </button>
-                )}
+              <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                {ans.content}
+              </p>
+
+              {/* Answer Upvote Button */}
+              <div className="pt-2 flex items-center">
+                <button
+                  onClick={() => handleToggleUpvote(ans.id, "answer", ans.upvotes_count)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs transition cursor-pointer ${
+                    isAnsUpvoted
+                      ? "bg-[#74B49B]/10 border-[#74B49B] text-[#427563]"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <ThumbsUp className={`w-3 h-3 ${isAnsUpvoted ? "fill-[#74B49B]" : ""}`} />
+                  <span className="font-semibold">{ans.upvotes_count} Likes</span>
+                </button>
               </div>
             </div>
-
-            <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-line leading-relaxed">
-              {ans.content}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Answer Form */}
@@ -344,7 +506,7 @@ export default function PostDetailPage({
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               {submitting ? "Posting..." : "Post Solution"}
@@ -363,7 +525,7 @@ export default function PostDetailPage({
         </div>
       )}
 
-      {/* Free In-House Moderation Modal */}
+      {/* Moderation Report Modal */}
       {reportTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
           <div className="bg-white rounded-3xl border border-slate-200 p-6 max-w-md w-full space-y-4 shadow-xl">
@@ -374,7 +536,7 @@ export default function PostDetailPage({
               </div>
               <button
                 onClick={() => setReportTarget(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -414,14 +576,14 @@ export default function PostDetailPage({
                 <button
                   type="button"
                   onClick={() => setReportTarget(null)}
-                  className="px-3 py-1.5 rounded-xl text-slate-500 hover:bg-slate-100"
+                  className="px-3 py-1.5 rounded-xl text-slate-500 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={reporting}
-                  className="px-4 py-1.5 bg-rose-600 text-white font-semibold rounded-xl shadow-xs"
+                  className="px-4 py-1.5 bg-rose-600 text-white font-semibold rounded-xl shadow-xs cursor-pointer"
                 >
                   {reporting ? "Submitting..." : "Submit Report"}
                 </button>

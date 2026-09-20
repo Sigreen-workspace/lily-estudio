@@ -109,7 +109,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-slate-600 max-w-sm leading-relaxed">
-              Empowering college learners, test takers, and study-abroad aspirants with a focused, community-driven study environment.
+              Empowering school-college learners and test takers aspirants with a focused, community-driven study environment.
             </p>
 
             {/* Dynamic Social Icons */}

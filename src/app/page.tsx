@@ -61,7 +61,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Lily Estudio provides college learners, exam candidates, and study-abroad aspirants with a focused ecosystem to organize and elevate their daily study routines.
+            Lily Estudio provides school-college learners and test takers aspirants with a focused ecosystem to organize and elevate their daily study routines.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">

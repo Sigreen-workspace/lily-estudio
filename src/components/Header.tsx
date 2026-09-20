@@ -14,6 +14,7 @@ export default function Header() {
     { label: "Practice", href: "/practice" },
     { label: "Mentors", href: "/mentors" },
     { label: "Flashcards", href: "/flashcards" },
+    { label: "Community", href: "/community" },
     { label: "Scholarships", href: "/scholarships" },
   ];
 
