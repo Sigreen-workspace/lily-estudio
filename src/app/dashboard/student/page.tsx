@@ -242,11 +242,15 @@ function StudentDashboardContent() {
   const masteredCards = flashcardReviews.filter((f) => f.box_level >= 4).length;
   const unlockedKeys = new Set(userBadges.map((b) => b.badge_key));
 
-  // Strict Role checking (Only true if explicitly approved by admin)
+  // Strict Role Checking: Only true if role is explicitly 'teacher' AND verification status is approved
   const isTeacherApproved = Boolean(
-    profile?.is_teacher_verified || profile?.teacher_verification_status === "approved"
+    profile?.role === "teacher" &&
+    (profile?.is_teacher_verified === true || profile?.teacher_verification_status === "approved")
   );
-  const isMentorApproved = mentorAppStatus === "approved";
+
+  const isMentorApproved = Boolean(
+    profile?.role === "mentor" && mentorAppStatus === "approved"
+  );
 
   const isPendingReview = Boolean(
     !isTeacherApproved &&
