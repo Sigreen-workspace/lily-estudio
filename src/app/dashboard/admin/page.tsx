@@ -36,6 +36,7 @@ import {
   XCircle,
   UserX,
   Pencil,
+  User,
 } from "lucide-react";
 
 interface TeamMember {
@@ -1039,13 +1040,22 @@ function AdminDashboardContent() {
                       key={m.id}
                       className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col items-center text-center space-y-3"
                     >
-                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500/30">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={m.image_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"}
-                          alt={m.name}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500/30 bg-slate-100 flex items-center justify-center">
+                        {m.image_url && m.image_url.trim() !== "" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.image_url}
+                            alt={m.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-linear-to-tr from-[#5C899D] to-[#74B49B] text-white flex items-center justify-center text-xl font-extrabold uppercase">
+                            {m.name ? m.name.charAt(0) : <User className="w-8 h-8 text-white/80" />}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800 text-sm">{m.name}</h4>
