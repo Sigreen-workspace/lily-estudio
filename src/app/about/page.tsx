@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Mail, Users, ArrowLeft } from "lucide-react";
+import { Mail, Users, ArrowLeft, User } from "lucide-react";
 import Link from "next/link";
 
 function GithubIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -145,18 +145,25 @@ export default function AboutUsPage() {
                 key={member.id}
                 className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs hover:border-[#74B49B] transition flex flex-col items-center text-center space-y-4"
               >
-             {/* Circular Image */}
+                {/* Circular Image / WhatsApp Style No-DP Fallback */}
                 <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-[#74B49B]/20 shadow-sm bg-slate-100 flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={member.image_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback agar image load na ho toh default image dikhaye
-                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400";
-                    }}
-                  />
+                  {member.image_url && member.image_url.trim() !== "" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={member.image_url}
+                      alt={member.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to No-DP icon if external link fails
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    // WhatsApp / Instagram No-DP Default Initial Avatar
+                    <div className="w-full h-full bg-linear-to-tr from-[#5C899D] to-[#74B49B] text-white flex items-center justify-center text-2xl font-extrabold uppercase">
+                      {member.name ? member.name.charAt(0) : <User className="w-10 h-10 text-white/80" />}
+                    </div>
+                  )}
                 </div>
 
                 {/* Name & Role */}
