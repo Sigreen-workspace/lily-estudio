@@ -35,7 +35,24 @@ import {
   UserCheck,
   XCircle,
   UserX,
+  Pencil,
 } from "lucide-react";
+
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  image_url: string;
+  bio: string;
+  display_order: number;
+  social_links?: {
+    github?: string;
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    email?: string;
+  };
+}
 
 export default function AdminDashboardPage() {
   return (
@@ -57,6 +74,7 @@ function AdminDashboardContent() {
     | "content_review"
     | "reports"
     | "users"
+    | "team"
   >("overview");
 
   // State Lists
@@ -68,6 +86,7 @@ function AdminDashboardContent() {
   const [scholarshipsList, setScholarshipsList] = useState<Scholarship[]>([]);
   const [feedbacksList, setFeedbacksList] = useState<PlatformFeedback[]>([]);
   const [adminApplicants, setAdminApplicants] = useState<UserProfile[]>([]);
+  const [teamList, setTeamList] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Social Contacts Settings State
@@ -98,6 +117,21 @@ function AdminDashboardContent() {
   const [scDescription, setScDescription] = useState("");
   const [isSubmittingSc, setIsSubmittingSc] = useState(false);
 
+  // Team Member Form State (Add / Edit)
+  const [showAddTeam, setShowAddTeam] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState("");
+  const [teamRole, setTeamRole] = useState("");
+  const [teamImage, setTeamImage] = useState("");
+  const [teamBio, setTeamBio] = useState("");
+  const [teamGithub, setTeamGithub] = useState("");
+  const [teamLinkedin, setTeamLinkedin] = useState("");
+  const [teamTwitter, setTeamTwitter] = useState("");
+  const [teamInstagram, setTeamInstagram] = useState("");
+  const [teamEmail, setTeamEmail] = useState("");
+  const [teamOrder, setTeamOrder] = useState("1");
+  const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
+
   // Action state
   const [actionReason, setActionReason] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -107,7 +141,7 @@ function AdminDashboardContent() {
 
     async function loadAdminData() {
       try {
-        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, adminAppRes] = await Promise.all([
+        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, adminAppRes, teamRes] = await Promise.all([
           supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
           supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
           supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }),
@@ -121,6 +155,7 @@ function AdminDashboardContent() {
           supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
           supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
           supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
+          supabase.from("team_members").select("*").order("display_order", { ascending: true }),
         ]);
 
         if (!ignore) {
@@ -144,6 +179,7 @@ function AdminDashboardContent() {
           if (fRes.data) setFeedbacksList(fRes.data as PlatformFeedback[]);
           if (setRes.data?.value) setSocials(setRes.data.value as SocialContactsSettings);
           if (adminAppRes.data) setAdminApplicants(adminAppRes.data as UserProfile[]);
+          if (teamRes.data) setTeamList(teamRes.data as TeamMember[]);
         }
       } catch (err) {
         console.error("Failed to load admin telemetry:", err);
@@ -180,6 +216,113 @@ function AdminDashboardContent() {
       }
     } finally {
       setSavingSocials(false);
+    }
+  };
+
+  // Open Edit Form for Team Member
+  const handleStartEditTeam = (m: TeamMember) => {
+    setEditingTeamId(m.id);
+    setTeamName(m.name || "");
+    setTeamRole(m.role || "");
+    setTeamImage(m.image_url || "");
+    setTeamBio(m.bio || "");
+    setTeamGithub(m.social_links?.github || "");
+    setTeamLinkedin(m.social_links?.linkedin || "");
+    setTeamTwitter(m.social_links?.twitter || "");
+    setTeamInstagram(m.social_links?.instagram || "");
+    setTeamEmail(m.social_links?.email || "");
+    setTeamOrder(String(m.display_order || 1));
+    setShowAddTeam(true);
+  };
+
+  // Reset Team Form
+  const handleResetTeamForm = () => {
+    setShowAddTeam(false);
+    setEditingTeamId(null);
+    setTeamName("");
+    setTeamRole("");
+    setTeamImage("");
+    setTeamBio("");
+    setTeamGithub("");
+    setTeamLinkedin("");
+    setTeamTwitter("");
+    setTeamInstagram("");
+    setTeamEmail("");
+    setTeamOrder("1");
+  };
+
+  // Add or Update Team Member Action
+  const handleSaveTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teamName || !teamRole) {
+      alert("Please enter member name and role.");
+      return;
+    }
+
+    setIsSubmittingTeam(true);
+    try {
+      const payload = {
+        name: teamName.trim(),
+        role: teamRole.trim(),
+        image_url: teamImage.trim() || null,
+        bio: teamBio.trim() || null,
+        display_order: parseInt(teamOrder) || 1,
+        social_links: {
+          github: teamGithub.trim() || undefined,
+          linkedin: teamLinkedin.trim() || undefined,
+          twitter: teamTwitter.trim() || undefined,
+          instagram: teamInstagram.trim() || undefined,
+          email: teamEmail.trim() || undefined,
+        },
+      };
+
+      if (editingTeamId) {
+        const { data, error } = await supabase
+          .from("team_members")
+          .update(payload)
+          .eq("id", editingTeamId)
+          .select()
+          .single();
+
+        if (!error && data) {
+          setTeamList((prev) => prev.map((m) => (m.id === editingTeamId ? (data as TeamMember) : m)));
+          handleResetTeamForm();
+          alert("Team member successfully updated!");
+        } else {
+          alert("Failed to update team member: " + error?.message);
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("team_members")
+          .insert(payload)
+          .select()
+          .single();
+
+        if (!error && data) {
+          setTeamList((prev) => [...prev, data as TeamMember]);
+          handleResetTeamForm();
+          alert("Team member successfully added!");
+        } else {
+          alert("Failed to add team member: " + error?.message);
+        }
+      }
+    } finally {
+      setIsSubmittingTeam(false);
+    }
+  };
+
+  // Delete Team Member Action
+  const handleDeleteTeamMember = async (id: string) => {
+    if (!confirm("Are you sure you want to remove this team member?")) return;
+    try {
+      const { error } = await supabase.from("team_members").delete().eq("id", id);
+      if (!error) {
+        setTeamList((prev) => prev.filter((m) => m.id !== id));
+      } else {
+        alert("Failed to delete member: " + error.message);
+      }
+    } catch {
+      alert("Error deleting team member.");
     }
   };
 
@@ -436,6 +579,7 @@ function AdminDashboardContent() {
           official_url: scOfficialUrl.trim(),
           eligibility_criteria: scCriteria.trim(),
           description: scDescription.trim(),
+          requirements: scCriteria.trim() || scDescription.trim() || "Standard application requirements apply.",
           is_verified: true,
           is_demo: false,
           last_verified_at: nowIso,
@@ -606,6 +750,16 @@ function AdminDashboardContent() {
 
         <button
           type="button"
+          onClick={() => setActiveTab("team")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "team" ? "bg-emerald-700 text-white shadow-2xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" /> Team Members ({teamList.length})
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab("scholarships")}
           className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === "scholarships" ? "bg-[#74B49B] text-white shadow-2xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -713,6 +867,221 @@ function AdminDashboardContent() {
         </div>
       ) : (
         <>
+          {/* TEAM MEMBERS MANAGEMENT TAB */}
+          {activeTab === "team" && (
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">About Us / Team Management</h2>
+                  <p className="text-xs text-slate-500">
+                    Add, edit, or remove founders, co-founders, and leadership displayed on the public About Us page.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showAddTeam) {
+                      handleResetTeamForm();
+                    } else {
+                      handleResetTeamForm();
+                      setShowAddTeam(true);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition shadow-2xs shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> {showAddTeam ? "Close Form" : "Add Team Member"}
+                </button>
+              </div>
+
+              {showAddTeam && (
+                <form onSubmit={handleSaveTeamMember} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-xs">
+                  <h3 className="font-bold text-slate-800 text-sm">
+                    {editingTeamId ? "Edit Team Member Profile" : "Add New Team Member Profile"}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Gaindlal Kosma"
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Role / Designation *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Founder & Lead Developer"
+                        value={teamRole}
+                        onChange={(e) => setTeamRole(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Display Order (1, 2, 3...)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={teamOrder}
+                        onChange={(e) => setTeamOrder(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Google Drive or Direct Image Link</label>
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/... (Make sure sharing is set to 'Anyone with the link')"
+                      value={teamImage}
+                      onChange={(e) => setTeamImage(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Tip: For Google Drive, ensure link sharing is set to &quot;Anyone with the link can view&quot;.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Short Biography / Introduction</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Passionate engineer and creator..."
+                      value={teamBio}
+                      onChange={(e) => setTeamBio(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">GitHub URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://github.com/..."
+                        value={teamGithub}
+                        onChange={(e) => setTeamGithub(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">LinkedIn URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://linkedin.com/in/..."
+                        value={teamLinkedin}
+                        onChange={(e) => setTeamLinkedin(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Twitter / X URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://x.com/..."
+                        value={teamTwitter}
+                        onChange={(e) => setTeamTwitter(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Instagram URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://instagram.com/..."
+                        value={teamInstagram}
+                        onChange={(e) => setTeamInstagram(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Contact Email</label>
+                      <input
+                        type="email"
+                        placeholder="member@email.com"
+                        value={teamEmail}
+                        onChange={(e) => setTeamEmail(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleResetTeamForm}
+                      className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-200/60 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingTeam}
+                      className="px-5 py-2 bg-emerald-600 text-white font-semibold rounded-xl shadow-xs cursor-pointer"
+                    >
+                      {isSubmittingTeam ? "Saving..." : editingTeamId ? "Update Team Member" : "Save Team Member"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {teamList.length === 0 ? (
+                <p className="text-xs text-slate-400 py-6 text-center">No team members added yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teamList.map((m) => (
+                    <div
+                      key={m.id}
+                      className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col items-center text-center space-y-3"
+                    >
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500/30">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.image_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"}
+                          alt={m.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{m.name}</h4>
+                        <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {m.role}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 line-clamp-2">{m.bio}</p>
+                      <div className="w-full pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400">Display Order: #{m.display_order}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditTeam(m)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                            title="Edit Member"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTeamMember(m.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Delete Member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SOCIAL MEDIA & CONTACTS SETTINGS TAB */}
           {activeTab === "social_settings" && (
             <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
@@ -1558,89 +1927,98 @@ function AdminDashboardContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {usersList.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50/80 transition">
-                        <td className="py-2.5 px-3 font-semibold text-slate-800">
-                          {u.full_name || "Anonymous Scholar"}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <RoleBadge role={u.role} isVerified={u.is_teacher_verified} />
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              u.account_status === "suspended"
-                                ? "bg-rose-100 text-rose-800 border border-rose-200"
-                                : u.account_status === "warned"
-                                ? "bg-amber-100 text-amber-800 border border-amber-200"
-                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                            }`}
-                          >
-                            {u.account_status || "active"}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          {u.role !== "admin" ? (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {u.account_status !== "warned" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleModerateUser(u.id, "warned")}
-                                  disabled={processingId === u.id}
-                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold rounded-lg border border-amber-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Warn
-                                </button>
-                              )}
+                    {usersList.map((u) => {
+                      const matchedMentor = mentorsList.find((m) => m.user_id === u.id);
+                      const isMentorApproved = matchedMentor?.verification_status === "approved" || matchedMentor?.is_verified;
 
-                              {u.account_status === "suspended" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleModerateUser(u.id, "active")}
-                                  disabled={processingId === u.id}
-                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <RotateCcw className="w-3 h-3 text-emerald-600" /> Unblock
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleModerateUser(u.id, "suspended", 24)}
-                                  disabled={processingId === u.id}
-                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Ban className="w-3 h-3 text-rose-600" /> Suspend
-                                </button>
-                              )}
+                      return (
+                        <tr key={u.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            {u.full_name || "Anonymous Scholar"}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <RoleBadge 
+                              role={u.role} 
+                              isVerified={u.is_teacher_verified || isMentorApproved} 
+                              verificationStatus={isMentorApproved ? "approved" : undefined} 
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                u.account_status === "suspended"
+                                  ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                  : u.account_status === "warned"
+                                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              }`}
+                            >
+                              {u.account_status || "active"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {u.role !== "admin" ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {u.account_status !== "warned" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleModerateUser(u.id, "warned")}
+                                    disabled={processingId === u.id}
+                                    className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold rounded-lg border border-amber-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <AlertTriangle className="w-3 h-3 text-amber-600" /> Warn
+                                  </button>
+                                )}
 
-                              {(u.role === "teacher" || u.role === "mentor") && (
+                                {u.account_status === "suspended" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleModerateUser(u.id, "active")}
+                                    disabled={processingId === u.id}
+                                    className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <RotateCcw className="w-3 h-3 text-emerald-600" /> Unblock
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleModerateUser(u.id, "suspended", 24)}
+                                    disabled={processingId === u.id}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Ban className="w-3 h-3 text-rose-600" /> Suspend
+                                  </button>
+                                )}
+
+                                {(u.role === "teacher" || u.role === "mentor") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDemoteUser(u.id, u.full_name || "")}
+                                    disabled={processingId === u.id}
+                                    className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <UserX className="w-3 h-3 text-indigo-600" /> Demote
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
-                                  onClick={() => handleDemoteUser(u.id, u.full_name || "")}
+                                  onClick={() => handleDeleteUser(u.id, u.full_name || "")}
                                   disabled={processingId === u.id}
-                                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                                  className="px-2 py-1 bg-rose-700 hover:bg-rose-800 text-white text-[10px] font-bold rounded-lg transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
                                 >
-                                  <UserX className="w-3 h-3 text-indigo-600" /> Demote
+                                  <Trash2 className="w-3 h-3 text-white" /> Delete
                                 </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u.id, u.full_name || "")}
-                                disabled={processingId === u.id}
-                                className="px-2 py-1 bg-rose-700 hover:bg-rose-800 text-white text-[10px] font-bold rounded-lg transition disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <Trash2 className="w-3 h-3 text-white" /> Delete
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">Root Admin</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500">{new Date(u.created_at).toLocaleDateString()}</td>
-                        <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">{u.id.slice(0, 8)}...</td>
-                      </tr>
-                    ))}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">Root Admin</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500">{new Date(u.created_at).toLocaleDateString()}</td>
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">{u.id.slice(0, 8) + "..."}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

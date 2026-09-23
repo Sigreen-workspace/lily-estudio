@@ -226,6 +226,7 @@ export default function CommunityPage() {
 
         {user ? (
           <button
+            type="button"
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition shrink-0 cursor-pointer"
           >
@@ -260,6 +261,7 @@ export default function CommunityPage() {
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
+              type="button"
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 selectedCategory === cat.id
@@ -292,6 +294,7 @@ export default function CommunityPage() {
         <div className="space-y-4">
           {filteredPosts.map((post) => {
             const isUpvoted = userUpvotes.has(post.id);
+            const authorRole = post.profiles?.role;
 
             return (
               <div
@@ -300,6 +303,7 @@ export default function CommunityPage() {
               >
                 {/* Upvote Column */}
                 <button
+                  type="button"
                   onClick={() => handleToggleUpvote(post.id, post.upvotes_count)}
                   className={`flex sm:flex-col items-center gap-1.5 px-3 py-2 sm:px-3 sm:py-2.5 rounded-2xl border transition shrink-0 cursor-pointer ${
                     isUpvoted
@@ -352,12 +356,8 @@ export default function CommunityPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-700 font-medium">
-                          {post.profiles?.full_name || "Scholar"}
-                        </span>
-                        <RoleBadge role={post.profiles?.role} />
-                      </div>
+                      {/* Name removed, only RoleBadge shown */}
+                      <RoleBadge role={authorRole} />
 
                       <Link
                         href={`/community/${post.id}`}
@@ -381,6 +381,7 @@ export default function CommunityPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-800">Ask the Academic Community</h3>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >

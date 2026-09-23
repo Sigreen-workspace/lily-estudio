@@ -5,7 +5,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, MentorshipRequest } from "@/lib/supabase";
-import { ArrowLeft, Compass, Clock, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Compass, Clock, CheckCircle2, XCircle, Trash2, MessageSquare } from "lucide-react";
 
 export default function StudentRequestsPage() {
   return (
@@ -31,15 +31,22 @@ function StudentRequestsContent() {
       try {
         type RawRequest = Record<string, unknown> & { mentor_id?: string };
         let rawData: RawRequest[] = [];
+
+        // 1. Try fetching from 'mentorship_requests' table
         const res1 = await supabase
           .from("mentorship_requests")
           .select("*")
           .eq("student_id", user.id)
           .order("created_at", { ascending: false });
 
+        if (res1.error) {
+          console.error("Error fetching from mentorship_requests:", res1.error.message);
+        }
+
         if (res1.data && res1.data.length > 0) {
-          rawData = (res1.data ?? []) as RawRequest[];
+          rawData = res1.data as RawRequest[];
         } else {
+          // 2. Fallback to 'mentor_requests' table if primary is empty
           const res2 = await supabase
             .from("mentor_requests")
             .select("*")
@@ -76,6 +83,7 @@ function StudentRequestsContent() {
 
           const formattedRequests = rawData.map((req) => ({
             ...req,
+            mentor_response: req.mentor_response || req.response || req.reply || req.mentor_notes,
             profiles: profileMap[req.mentor_id ?? ""] || {
               full_name: "Academic Mentor",
               institution: "Independent Advisor",
@@ -102,7 +110,7 @@ function StudentRequestsContent() {
 
   // Handle Delete Request
   const handleDeleteRequest = async (reqId: string) => {
-    if (!confirm("Kya aap is mentorship request ko permanently delete karna chahte hain?")) return;
+    if (!confirm("Are you sure you want to permanently delete this mentorship request?")) return;
     setActionId(reqId);
 
     try {
@@ -120,7 +128,7 @@ function StudentRequestsContent() {
 
       setRequests((prev) => prev.filter((r) => r.id !== reqId));
     } catch {
-      alert("Request delete karne mein asafalta rahi. Kripya dobara koshish karein.");
+      alert("Failed to delete request. Please try again.");
     } finally {
       setActionId(null);
     }
@@ -174,6 +182,8 @@ function StudentRequestsContent() {
             {requests.map((r) => {
               const studentNote = r.message || r.notes || "No message content attached.";
               const mentorName = r.profiles?.full_name || "Academic Mentor";
+              // @ts-expect-error flexible typing support
+              const mentorReply = r.mentor_response || r.response || r.reply;
 
               return (
                 <div key={r.id} className="py-5 space-y-3">
@@ -209,8 +219,8 @@ function StudentRequestsContent() {
                       </p>
                     </div>
 
-                    {/* Delete Request Button */}
                     <button
+                      type="button"
                       onClick={() => handleDeleteRequest(r.id)}
                       disabled={actionId === r.id}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer"
@@ -224,10 +234,12 @@ function StudentRequestsContent() {
                     <span className="font-semibold text-slate-800">Your Message:</span> {studentNote}
                   </div>
 
-                  {r.mentor_response && (
+                  {mentorReply && (
                     <div className="p-4 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs space-y-1">
-                      <span className="font-bold text-emerald-800">Response &amp; Contact from {mentorName}:</span>
-                      <p className="text-slate-800 font-medium break-all leading-relaxed">{r.mentor_response}</p>
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                        <MessageSquare className="w-3.5 h-3.5" /> Response &amp; Contact from {mentorName}:
+                      </div>
+                      <p className="text-slate-800 font-medium break-all leading-relaxed">{String(mentorReply)}</p>
                     </div>
                   )}
                 </div>

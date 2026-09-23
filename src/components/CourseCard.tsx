@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Clock, User, Bookmark, School, GraduationCap, Trophy, Globe } from "lucide-react";
-import { Course } from "@/lib/supabase";
+import { Course, supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { isCourseSaved, toggleSaveCourse } from "@/lib/bookmarks";
 
 export default function CourseCard({ course }: { course: Course }) {
-  // Initialize state lazily to eliminate synchronous setState in useEffect
+  const { user } = useAuth();
   const [bookmarked, setBookmarked] = useState<boolean>(() => isCourseSaved(course.id));
 
   useEffect(() => {
@@ -16,11 +17,44 @@ export default function CourseCard({ course }: { course: Course }) {
     return () => window.removeEventListener("bookmarks_updated", handleSync);
   }, [course.id]);
 
-  const handleBookmark = (e: React.MouseEvent) => {
+const handleBookmark = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const state = toggleSaveCourse(course.id);
-    setBookmarked(state);
+    
+    // Toggle local/localStorage state
+    const newState = toggleSaveCourse(course.id);
+    setBookmarked(newState);
+
+    // Sync with Supabase database for the student dashboard saved resources section
+    if (user) {
+      try {
+        if (newState) {
+          const { error } = await supabase.from("saved_resources").insert({
+            user_id: user.id,
+            resource_type: "course",
+            item_id: course.id, // target_id ki jagah item_id use kiya gaya hai
+            title: course.title,
+            target_url: `/courses/${course.slug}`,
+          });
+
+          if (error) {
+            console.error("Supabase Bookmark Insert Error:", error.message, error.details, error.hint);
+          }
+        } else {
+          const { error } = await supabase
+            .from("saved_resources")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("item_id", course.id); // target_id ki jagah item_id use kiya gaya hai
+
+          if (error) {
+            console.error("Supabase Bookmark Delete Error:", error.message, error.details, error.hint);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync bookmark with database:", err);
+      }
+    }
   };
 
   const getTrackIcon = (track?: string) => {
@@ -56,7 +90,7 @@ export default function CourseCard({ course }: { course: Course }) {
           <button
             onClick={handleBookmark}
             aria-label="Bookmark course"
-            className="p-2 rounded-full bg-white/80 hover:bg-white text-slate-700 transition shadow-2xs"
+            className="p-2 rounded-full bg-white/80 hover:bg-white text-slate-700 transition shadow-2xs cursor-pointer"
           >
             <Bookmark className={`w-4 h-4 ${bookmarked ? "fill-[#74B49B] text-[#74B49B]" : ""}`} />
           </button>

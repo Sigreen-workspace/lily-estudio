@@ -5,17 +5,22 @@ import { UserRole } from "@/lib/supabase";
 interface RoleBadgeProps {
   role?: UserRole | string;
   isVerified?: boolean;
+  verificationStatus?: string;
   className?: string;
 }
 
 export default function RoleBadge({
   role = "student",
   isVerified = false,
+  verificationStatus,
   className = "",
 }: RoleBadgeProps) {
+  // Check if verified via boolean flag or direct status string
+  const actuallyVerified = isVerified || verificationStatus === "approved";
+
   switch (role) {
     case "teacher":
-      if (isVerified) {
+      if (actuallyVerified) {
         return (
           <span
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs ${className}`}
@@ -35,7 +40,7 @@ export default function RoleBadge({
       );
 
     case "mentor":
-      if (isVerified) {
+      if (actuallyVerified) {
         return (
           <span
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sky-50 text-sky-700 border border-sky-300 shadow-2xs ${className}`}

@@ -211,6 +211,7 @@ export default function Footer() {
               <li><Link href="/practice" className="hover:text-[#74B49B] transition">Practice Tests</Link></li>
               <li><Link href="/flashcards" className="hover:text-[#74B49B] transition">Flashcards</Link></li>
               <li><Link href="/scholarships" className="hover:text-[#74B49B] transition">Scholarships</Link></li>
+              <li><Link href="/about" className="hover:text-[#74B49B] transition font-medium text-[#5C899D]">About Us</Link></li>
             </ul>
           </div>
 

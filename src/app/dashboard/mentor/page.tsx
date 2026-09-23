@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import RoleBadge from "@/components/RoleBadge";
 import {
   Compass,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   Calendar,
   Send,
   Trash2,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function MentorDashboardPage() {
@@ -46,6 +48,7 @@ function MentorDashboardContent() {
   const [responseTexts, setResponseTexts] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mentorRecord, setMentorRecord] = useState<{ is_verified?: boolean; verification_status?: string } | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -55,11 +58,25 @@ function MentorDashboardContent() {
       setLoading(true);
 
       try {
-        const { data, error } = await supabase
-          .from("mentorship_requests")
-          .select("*")
-          .eq("mentor_id", user.id)
-          .order("created_at", { ascending: false });
+        const [reqRes, mentorRes] = await Promise.all([
+          supabase
+            .from("mentorship_requests")
+            .select("*")
+            .eq("mentor_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("mentor_profiles")
+            .select("is_verified, verification_status")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+        ]);
+
+        if (!ignore && mentorRes.data) {
+          setMentorRecord(mentorRes.data);
+        }
+
+        const data = reqRes.data;
+        const error = reqRes.error;
 
         if (!ignore && !error && data) {
           const studentIds = data.map((r) => r.student_id).filter(Boolean);
@@ -165,7 +182,7 @@ function MentorDashboardContent() {
 
   // Handle Delete Request for Mentor
   const handleDeleteRequest = async (requestId: string) => {
-    if (!confirm("Kya aap is mentorship record ko permanently delete karna chahte hain?")) return;
+    if (!confirm("Do you want to permanently delete this mentorship record?")) return;
     setDeletingId(requestId);
 
     try {
@@ -188,15 +205,24 @@ function MentorDashboardContent() {
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const acceptedCount = requests.filter((r) => r.status === "accepted").length;
+  
+  const isMentorVerified = Boolean(
+    profile?.role === "admin" ||
+    mentorRecord?.is_verified ||
+    mentorRecord?.verification_status === "approved"
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Mentor Header Banner */}
       <div className="bg-linear-to-r from-[#74B49B]/20 to-[#5C899D]/20 rounded-3xl p-6 sm:p-8 border border-[#74B49B]/30 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-[#427563] shadow-2xs">
-            <Compass className="w-3.5 h-3.5" /> Academic Mentor Hub &amp; Advisory
-          </span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-[#427563] shadow-2xs">
+              <Compass className="w-3.5 h-3.5" /> Academic Mentor Hub &amp; Advisory
+            </span>
+            <RoleBadge role="mentor" isVerified={isMentorVerified} />
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800">
             Welcome back, {profile?.full_name || "Mentor"}!
           </h1>
@@ -206,6 +232,27 @@ function MentorDashboardContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Request Admin Access Button */}
+          {profile?.role !== "admin" && !profile?.assigned_roles?.includes("admin") && (
+            <button
+              type="button"
+              onClick={async () => {
+                const reason = prompt("State your reason for requesting platform administrative rights:");
+                if (!reason?.trim()) return;
+
+                const { error } = await supabase.rpc("apply_for_admin_role", { reason_text: reason.trim() });
+                if (!error) {
+                  alert("Admin access request successfully submitted for Root Admin review!");
+                } else {
+                  alert("Error: " + error.message);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded-xl text-xs font-semibold shadow-xs cursor-pointer transition"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> Request Admin Access
+            </button>
+          )}
+
           <div className="p-4 bg-white/90 backdrop-blur-xs rounded-2xl border border-slate-200 text-xs space-y-0.5 shadow-2xs min-w-32">
             <span className="text-[10px] font-bold uppercase text-slate-400 block">Pending Requests</span>
             <strong className="text-lg font-extrabold text-amber-600">{pendingCount}</strong>

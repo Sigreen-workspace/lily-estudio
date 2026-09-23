@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
-import { supabase, AcademicProgram, ContentStatus } from "@/lib/supabase";
+import { supabase, AcademicProgram, ContentStatus, AcademicTrack } from "@/lib/supabase";
 import { ArrowLeft, BookOpen, AlertCircle, Save, Send, Search } from "lucide-react";
 
 type CourseLevel = "Beginner" | "Intermediate" | "Advanced" | "All Levels";
@@ -26,6 +26,9 @@ function NewCourseForm() {
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<CourseLevel>("Beginner");
   const [estimatedHours, setEstimatedHours] = useState("10");
+  
+  // Academic Track State
+  const [academicTrack, setAcademicTrack] = useState<AcademicTrack>("college");
   
   // Searchable Program States
   const [programs, setPrograms] = useState<AcademicProgram[]>([]);
@@ -98,6 +101,7 @@ function NewCourseForm() {
           level,
           estimated_hours: parseInt(estimatedHours, 10) || 10,
           program_id: programId || null,
+          academic_track: academicTrack, // Added Academic Track field
           created_by: user.id,
           status: initialStatus,
           thumbnail_gradient: "from-[#74B49B] to-[#A2C4C9]",
@@ -155,6 +159,21 @@ function NewCourseForm() {
             />
           </div>
 
+          {/* Academic Track Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Track</label>
+            <select
+              value={academicTrack}
+              onChange={(e) => setAcademicTrack(e.target.value as AcademicTrack)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 cursor-pointer"
+            >
+              <option value="school">School (1-12)</option>
+              <option value="college">College / University</option>
+              <option value="competitive_exam">Competitive Exams (JEE/NEET/etc.)</option>
+              <option value="study_abroad">Study Abroad &amp; Admissions</option>
+            </select>
+          </div>
+
           {/* Typable / Searchable Academic Program Field */}
           <div className="relative" ref={dropdownRef}>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Program / Class (Type to search)</label>
@@ -198,7 +217,7 @@ function NewCourseForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Description & Learning Outcomes</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Description &amp; Learning Outcomes</label>
             <textarea
               rows={4}
               required

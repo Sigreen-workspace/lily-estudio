@@ -204,7 +204,6 @@ export default function PostDetailPage({
 
     setSubmitting(true);
     try {
-      // 1. Insert answer into forum_answers table
       const { error: insertError } = await supabase.from("forum_answers").insert({
         post_id: postId,
         author_id: user.id,
@@ -213,7 +212,6 @@ export default function PostDetailPage({
 
       if (insertError) throw new Error(insertError.message);
 
-      // 2. Fetch total actual answers count and update forum_posts
       const { count } = await supabase
         .from("forum_answers")
         .select("*", { count: "exact", head: true })
@@ -335,6 +333,8 @@ export default function PostDetailPage({
   const isPostAuthor = user?.id === post.author_id;
   const isPostUpvoted = userUpvotes.has(post.id);
 
+  const postAuthorRole = post.profiles?.role;
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <div>
@@ -363,6 +363,7 @@ export default function PostDetailPage({
           <div className="flex items-center gap-3">
             {user && (isPostAuthor || isAdmin) && (
               <button
+                type="button"
                 onClick={handleDeletePost}
                 className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-800 font-semibold transition cursor-pointer"
                 title="Delete Question"
@@ -373,6 +374,7 @@ export default function PostDetailPage({
 
             {user && (
               <button
+                type="button"
                 onClick={() => setReportTarget({ type: "post", id: post.id })}
                 className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 transition cursor-pointer"
                 title="Report Question"
@@ -394,6 +396,7 @@ export default function PostDetailPage({
         {/* Upvote / Like Action Bar */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs">
           <button
+            type="button"
             onClick={() => handleToggleUpvote(post.id, "post", post.upvotes_count)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition cursor-pointer ${
               isPostUpvoted
@@ -406,10 +409,7 @@ export default function PostDetailPage({
           </button>
 
           <div className="flex items-center gap-2 text-slate-500">
-            <span className="font-semibold text-slate-700">
-              {post.profiles?.full_name || "Scholar"}
-            </span>
-            <RoleBadge role={post.profiles?.role} />
+            <RoleBadge role={postAuthorRole} />
             <span>• {new Date(post.created_at).toLocaleDateString()}</span>
           </div>
         </div>
@@ -427,6 +427,7 @@ export default function PostDetailPage({
         {answers.map((ans) => {
           const isAnswerAuthor = user?.id === ans.author_id;
           const isAnsUpvoted = userUpvotes.has(ans.id);
+          const ansAuthorRole = ans.profiles?.role;
 
           return (
             <div
@@ -439,10 +440,7 @@ export default function PostDetailPage({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-bold text-slate-800">
-                    {ans.profiles?.full_name || "Scholar"}
-                  </span>
-                  <RoleBadge role={ans.profiles?.role} />
+                  <RoleBadge role={ansAuthorRole} />
                   <span className="text-[10px] text-slate-400">
                     {new Date(ans.created_at).toLocaleDateString()}
                   </span>
@@ -456,6 +454,7 @@ export default function PostDetailPage({
                   )}
                   {user && user.id === post.author_id && !ans.is_accepted && (
                     <button
+                      type="button"
                       onClick={() => handleMarkAccepted(ans.id)}
                       className="text-[11px] font-bold text-[#74B49B] hover:underline cursor-pointer"
                     >
@@ -465,6 +464,7 @@ export default function PostDetailPage({
 
                   {user && (isAnswerAuthor || isAdmin) && (
                     <button
+                      type="button"
                       onClick={() => handleDeleteAnswer(ans.id)}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-700 transition cursor-pointer"
                       title="Delete Answer"
@@ -475,6 +475,7 @@ export default function PostDetailPage({
 
                   {user && (
                     <button
+                      type="button"
                       onClick={() => setReportTarget({ type: "answer", id: ans.id })}
                       className="text-slate-300 hover:text-rose-500 p-1 cursor-pointer"
                       title="Report Answer"
@@ -492,6 +493,7 @@ export default function PostDetailPage({
               {/* Answer Upvote Button */}
               <div className="pt-2 flex items-center">
                 <button
+                  type="button"
                   onClick={() => handleToggleUpvote(ans.id, "answer", ans.upvotes_count)}
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs transition cursor-pointer ${
                     isAnsUpvoted
@@ -568,6 +570,7 @@ export default function PostDetailPage({
                 <h3 className="text-sm font-bold">Report Community Content</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setReportTarget(null)}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
               >

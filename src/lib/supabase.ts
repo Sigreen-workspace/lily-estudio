@@ -159,6 +159,7 @@ export interface Course {
   level: "Beginner" | "Intermediate" | "Advanced" | "All Levels";
   estimated_hours: number;
   thumbnail_gradient: string;
+  academic_track?: AcademicTrack;
   created_at: string;
   categories?: Category;
   academic_programs?: AcademicProgram;
@@ -190,6 +191,7 @@ export interface PracticeTest {
   passing_score: number;
   total_questions: number;
   difficulty: "Easy" | "Medium" | "Hard";
+  academic_track?: AcademicTrack;
   created_at: string;
   categories?: Category;
 }

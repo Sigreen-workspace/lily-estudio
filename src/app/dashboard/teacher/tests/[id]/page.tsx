@@ -179,6 +179,7 @@ function CreateTestContent() {
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
       <div>
         <button
+          type="button"
           onClick={() => router.back()}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5C899D] hover:underline cursor-pointer"
         >
