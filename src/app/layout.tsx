@@ -22,7 +22,7 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3862309981201591"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </head>
       <body className="antialiased min-h-screen flex flex-col bg-[#F8FAF8] text-slate-800">
