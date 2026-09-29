@@ -270,7 +270,7 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-xl text-sm font-semibold ${
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold block ${
                     isActive ? "bg-[#74B49B]/15 text-[#427563]" : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
