@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import NoticeBoard from "@/components/NoticeBoard";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, Course, PracticeTest } from "@/lib/supabase";
 import RoleBadge from "@/components/RoleBadge";
@@ -178,6 +179,9 @@ function TeacherDashboardContent() {
         </div>
       )}
 
+      {/* Notice Board Component Added Here */}
+      <NoticeBoard />
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -259,7 +263,6 @@ function TeacherDashboardContent() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Fixed Course Edit Link */}
                     <Link
                       href={`/dashboard/teacher/courses/${c.id}/edit`}
                       className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition"
@@ -317,7 +320,6 @@ function TeacherDashboardContent() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Fixed Test Edit Link */}
                     <Link
                       href={`/dashboard/teacher/tests/${t.id}/edit`}
                       className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition"

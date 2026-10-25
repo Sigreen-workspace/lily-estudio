@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import NoticeBoard from "@/components/NoticeBoard";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import RoleBadge from "@/components/RoleBadge";
@@ -263,6 +264,9 @@ function MentorDashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Notice Board Component Added Here */}
+      <NoticeBoard />
 
       {/* Requests Queue Section */}
       <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">

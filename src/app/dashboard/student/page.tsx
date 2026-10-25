@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import NoticeBoard from "@/components/NoticeBoard";
 import { useAuth } from "@/context/AuthContext";
 import {
   supabase,
@@ -342,6 +343,9 @@ function StudentDashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Notice Board Component Added Here */}
+      <NoticeBoard />
 
       {/* Primary Navigation Launchers */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
