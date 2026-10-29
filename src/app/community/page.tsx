@@ -45,26 +45,18 @@ export default function CommunityPage() {
   const [newTags, setNewTags] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     let ignore = false;
 
     async function fetchForumData() {
       try {
-        // Fetch posts along with profiles and exact count of responses from forum_responses table
         const { data, error } = await supabase
           .from("forum_posts")
-          .select("*, profiles(*), forum_responses(count)")
+          .select("*, profiles(*)")
           .order("created_at", { ascending: false });
 
         if (!ignore && !error && data) {
-          // Map response count dynamically
-          const formattedPosts = (data as Array<ForumPost & { forum_responses?: { count: number }[] }>).map(
-            (post) => ({
-              ...post,
-              answers_count: post.forum_responses?.[0]?.count ?? post.answers_count ?? 0,
-            })
-          );
-          setPosts(formattedPosts as ForumPost[]);
+          setPosts(data as ForumPost[]);
         }
 
         if (user) {
@@ -98,15 +90,11 @@ useEffect(() => {
     try {
       const { data, error } = await supabase
         .from("forum_posts")
-        .select("*, profiles(*), forum_responses(count)")
+        .select("*, profiles(*)")
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        const formattedPosts = data.map((post: ForumPost) => ({
-          ...post,
-          answers_count: post.forum_responses?.[0]?.count ?? post.answers_count ?? 0,
-        }));
-        setPosts(formattedPosts as ForumPost[]);
+        setPosts(data as ForumPost[]);
       }
 
       if (user) {
