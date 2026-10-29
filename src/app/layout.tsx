@@ -18,12 +18,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3862309981201591"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
+        {/* Preconnect to Google Adsense for faster connection */}
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
       </head>
       <body className="antialiased min-h-screen flex flex-col bg-[#F8FAF8] text-slate-800">
         <AuthProvider>
@@ -32,6 +28,15 @@ export default function RootLayout({
           <main className="flex-1 w-full min-h-[calc(100vh-140px)]">{children}</main>
           <Footer />
         </AuthProvider>
+
+        {/* Moving Google Adsense Script outside head to the body end for optimal performance */}
+        <Script
+          id="adsense-script"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3862309981201591"
+          crossOrigin="anonymous"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );

@@ -67,14 +67,14 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
             <Link
               href="/dashboard"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white bg-[#74B49B] hover:bg-[#5f9c85] rounded-xl shadow-sm transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white bg-[#74B49B] hover:bg-[#5f9c85] rounded-xl shadow-xs transition cursor-pointer"
             >
               Start Studying
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/courses"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition cursor-pointer"
             >
               Browse Library
             </Link>
@@ -114,7 +114,7 @@ export default function HomePage() {
                 </div>
                 <Link
                   href={mod.href}
-                  className="text-xs font-semibold text-[#5C899D] hover:text-[#41687a] inline-flex items-center gap-1 transition"
+                  className="text-xs font-semibold text-[#5C899D] hover:text-[#41687a] inline-flex items-center gap-1 transition cursor-pointer"
                 >
                   Explore module <ArrowRight className="w-3 h-3" />
                 </Link>
