@@ -14,10 +14,11 @@ import {
   PlatformFeedback,
   SocialContactsSettings,
 } from "@/lib/supabase";
-import { ShieldAlert, ExternalLink, Share2, Users } from "lucide-react";
+import { ShieldAlert, ExternalLink, Share2, Users, QrCode } from "lucide-react";
 
 import OverviewTab from "./tabs/OverviewTab";
 import SocialSettingsTab from "./tabs/SocialSettingsTab";
+import PaymentQrTab, { PaymentSupportSettings } from "./tabs/PaymentQrTab";
 import TeamManagementTab from "./tabs/TeamManagementTab";
 import ScholarshipsTab from "./tabs/ScholarshipsTab";
 import FeedbacksTab from "./tabs/FeedbacksTab";
@@ -49,6 +50,7 @@ function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<
     | "overview"
     | "social_settings"
+    | "payment_qr"
     | "scholarships"
     | "feedbacks"
     | "teachers"
@@ -85,6 +87,16 @@ function AdminDashboardContent() {
   const [savingSocials, setSavingSocials] = useState(false);
   const [socialsSavedMsg, setSocialsSavedMsg] = useState(false);
 
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSupportSettings>({
+    enabled: true,
+    upi_id: "",
+    payee_name: "Gaindlal Kosma",
+    qr_url: "",
+    note: "100% voluntary contribution to help keep Lily Estudio free for students.",
+  });
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentSavedMsg, setPaymentSavedMsg] = useState(false);
+
   const [showAddScholarship, setShowAddScholarship] = useState(false);
   const [scTitle, setScTitle] = useState("");
   const [scProvider, setScProvider] = useState("");
@@ -114,7 +126,7 @@ function AdminDashboardContent() {
 
     async function loadAdminData() {
       try {
-        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, adminAppRes, teamRes] = await Promise.all([
+        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, payRes, adminAppRes, teamRes] = await Promise.all([
           supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
           supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
           supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }),
@@ -123,6 +135,7 @@ function AdminDashboardContent() {
           supabase.from("scholarships").select("*").order("created_at", { ascending: false }),
           supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
           supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
+          supabase.from("platform_settings").select("*").eq("key", "payment_support").maybeSingle(),
           supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
           supabase.from("team_members").select("*").order("display_order", { ascending: true }),
         ]);
@@ -138,6 +151,12 @@ function AdminDashboardContent() {
           if (sRes.data) setScholarshipsList(sRes.data as Scholarship[]);
           if (fRes.data) setFeedbacksList(fRes.data as PlatformFeedback[]);
           if (setRes.data?.value) setSocials(setRes.data.value as SocialContactsSettings);
+          if (payRes.data?.value) {
+            setPaymentSettings((prev) => ({
+              ...prev,
+              ...(payRes.data.value as Partial<PaymentSupportSettings>),
+            }));
+          }
           if (adminAppRes.data) setAdminApplicants(adminAppRes.data as UserProfile[]);
           if (teamRes.data) setTeamList(teamRes.data as TeamMember[]);
         }
@@ -161,6 +180,22 @@ function AdminDashboardContent() {
       setTimeout(() => setSocialsSavedMsg(false), 3000);
     } finally {
       setSavingSocials(false);
+    }
+  };
+
+  const handleSavePaymentSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPayment(true);
+    try {
+      await supabase.from("platform_settings").upsert({
+        key: "payment_support",
+        value: paymentSettings,
+        updated_at: new Date().toISOString(),
+      });
+      setPaymentSavedMsg(true);
+      setTimeout(() => setPaymentSavedMsg(false), 3000);
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -370,6 +405,7 @@ function AdminDashboardContent() {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
         <button type="button" onClick={() => setActiveTab("overview")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer ${activeTab === "overview" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"}`}>Overview</button>
         <button type="button" onClick={() => setActiveTab("social_settings")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "social_settings" ? "bg-purple-700 text-white" : "bg-slate-100 text-slate-600"}`}><Share2 className="w-3.5 h-3.5" /> Socials</button>
+        <button type="button" onClick={() => setActiveTab("payment_qr")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "payment_qr" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600"}`}><QrCode className="w-3.5 h-3.5" /> Payment QR</button>
         <button type="button" onClick={() => setActiveTab("team")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "team" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600"}`}><Users className="w-3.5 h-3.5" /> Team ({teamList.length})</button>
         <button type="button" onClick={() => setActiveTab("scholarships")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer ${activeTab === "scholarships" ? "bg-[#74B49B] text-white" : "bg-slate-100 text-slate-600"}`}>Scholarships</button>
         <button type="button" onClick={() => setActiveTab("feedbacks")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer ${activeTab === "feedbacks" ? "bg-[#5C899D] text-white" : "bg-slate-100 text-slate-600"}`}>Suggestions {unreadFeedbacksCount > 0 && <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500 text-white">{unreadFeedbacksCount}</span>}</button>
@@ -387,6 +423,7 @@ function AdminDashboardContent() {
         <>
           {activeTab === "overview" && <OverviewTab scholarshipsList={scholarshipsList} feedbacksList={feedbacksList} teachersList={teachersList} usersList={usersList} />}
           {activeTab === "social_settings" && <SocialSettingsTab socials={socials} setSocials={setSocials} onSave={handleSaveSocials} saving={savingSocials} savedMsg={socialsSavedMsg} />}
+          {activeTab === "payment_qr" && <PaymentQrTab paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} onSave={handleSavePaymentSettings} saving={savingPayment} savedMsg={paymentSavedMsg} />}
           {activeTab === "team" && <TeamManagementTab teamList={teamList} showAddTeam={showAddTeam} setShowAddTeam={setShowAddTeam} editingTeamId={editingTeamId} teamName={teamName} setTeamName={setTeamName} teamRole={teamRole} setTeamRole={setTeamRole} teamImage={teamImage} setTeamImage={setTeamImage} teamBio={teamBio} setTeamBio={setTeamBio} teamOrder={teamOrder} setTeamOrder={setTeamOrder} isSubmittingTeam={isSubmittingTeam} onSave={handleSaveTeamMember} onEdit={handleStartEditTeam} onDelete={handleDeleteTeamMember} onReset={handleResetTeamForm} />}
           {activeTab === "scholarships" && <ScholarshipsTab scholarshipsList={scholarshipsList} showAddScholarship={showAddScholarship} setShowAddScholarship={setShowAddScholarship} scTitle={scTitle} setScTitle={setScTitle} scProvider={scProvider} setScProvider={setScProvider} scCountry={scCountry} setScCountry={setScCountry} scLevel={scLevel} setScLevel={setScLevel} scAmount={scAmount} setScAmount={setScAmount} scDeadline={scDeadline} setScDeadline={setScDeadline} scOfficialUrl={scOfficialUrl} setScOfficialUrl={setScOfficialUrl} scCriteria={scCriteria} setScCriteria={setScCriteria} scDescription={scDescription} setScDescription={setScDescription} isSubmittingSc={isSubmittingSc} onCreate={handleCreateScholarship} onDelete={handleDeleteScholarship} />}
           {activeTab === "feedbacks" && <FeedbacksTab feedbacksList={feedbacksList} processingId={processingId} onUpdateStatus={handleUpdateFeedbackStatus} onDelete={handleDeleteFeedback} />}

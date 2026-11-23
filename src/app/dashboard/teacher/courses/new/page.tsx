@@ -6,33 +6,9 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, AcademicProgram, ContentStatus, AcademicTrack } from "@/lib/supabase";
-import {
-  ArrowLeft,
-  BookOpen,
-  AlertCircle,
-  Save,
-  Send,
-  Search,
-  Video,
-  FileUp,
-  Link2,
-  Plus,
-  Trash2,
-  FileText,
-} from "lucide-react";
+import { ArrowLeft, BookOpen, AlertCircle, Save, Send, Search } from "lucide-react";
 
 type CourseLevel = "Beginner" | "Intermediate" | "Advanced" | "All Levels";
-
-type ResourceKind = "youtube" | "file" | "link";
-
-interface DraftResource {
-  id: string;
-  kind: ResourceKind;
-  title: string;
-  url: string;
-  file?: File;
-  fileSizeKb?: number;
-}
 
 export default function NewCoursePage() {
   return (
@@ -61,16 +37,7 @@ function NewCourseForm() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Course Resources State (Videos, Files, Links)
-  const [resources, setResources] = useState<DraftResource[]>([]);
-  const [activeTab, setActiveTab] = useState<ResourceKind>("youtube");
-  const [resourceTitle, setResourceTitle] = useState("");
-  const [resourceUrl, setResourceUrl] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [resourceError, setResourceError] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,178 +76,11 @@ function NewCourseForm() {
       (p.track && p.track.toLowerCase().includes(programSearch.toLowerCase()))
   );
 
-  const isValidUrl = (value: string) => {
-    try {
-      const parsed = new URL(value.trim());
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
-
-  const handleAddUrlResource = (kind: "youtube" | "link") => {
-    setResourceError(null);
-    const cleanTitle = resourceTitle.trim();
-    const cleanUrl = resourceUrl.trim();
-
-    if (!cleanTitle || !cleanUrl) {
-      setResourceError("Please enter both a resource title and a valid URL.");
-      return;
-    }
-
-    if (!isValidUrl(cleanUrl)) {
-      setResourceError("URL must start with https:// or http://.");
-      return;
-    }
-
-    if (kind === "youtube") {
-      const isYt =
-        cleanUrl.includes("youtube.com") || cleanUrl.includes("youtu.be");
-      if (!isYt) {
-        setResourceError("Please enter a valid YouTube watch or share link.");
-        return;
-      }
-    }
-
-    setResources((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        kind,
-        title: cleanTitle,
-        url: cleanUrl,
-      },
-    ]);
-
-    setResourceTitle("");
-    setResourceUrl("");
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setResourceError(null);
-    const file = e.target.files?.[0] || null;
-    if (!file) {
-      setSelectedFile(null);
-      return;
-    }
-
-    // 50 MB max limit for safety
-    const maxBytes = 50 * 1024 * 1024;
-    if (file.size > maxBytes) {
-      setResourceError("File size must be under 50 MB.");
-      e.target.value = "";
-      return;
-    }
-
-    setSelectedFile(file);
-    if (!resourceTitle.trim()) {
-      setResourceTitle(file.name.replace(/\.[^/.]+$/, ""));
-    }
-  };
-
-  const handleAddFileResource = () => {
-    setResourceError(null);
-    if (!selectedFile) {
-      setResourceError("Please choose a file (PDF, notes, slides, or video) to attach.");
-      return;
-    }
-
-    const finalTitle = resourceTitle.trim() || selectedFile.name;
-
-    setResources((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        kind: "file",
-        title: finalTitle,
-        url: "",
-        file: selectedFile,
-        fileSizeKb: Math.round(selectedFile.size / 1024),
-      },
-    ]);
-
-    setSelectedFile(null);
-    setResourceTitle("");
-  };
-
-  const handleRemoveResource = (id: string) => {
-    setResources((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const uploadCourseResources = async (courseId: string, creatorId: string) => {
-    if (resources.length === 0) return;
-
-    const payload: Array<{
-      course_id: string;
-      uploaded_by: string;
-      title: string;
-      resource_type: ResourceKind;
-      url: string;
-      file_path: string | null;
-      file_size_kb: number | null;
-    }> = [];
-
-    for (let i = 0; i < resources.length; i++) {
-      const item = resources[i];
-      setStatusMessage(`Uploading resource ${i + 1} of ${resources.length}: ${item.title}...`);
-
-      if (item.kind === "file" && item.file) {
-        const safeName = item.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const storagePath = `${creatorId}/${courseId}/${Date.now()}-${safeName}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from("course-resources")
-          .upload(storagePath, item.file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (uploadErr) {
-          throw new Error(`Failed to upload "${item.title}": ${uploadErr.message}`);
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from("course-resources")
-          .getPublicUrl(storagePath);
-
-        payload.push({
-          course_id: courseId,
-          uploaded_by: creatorId,
-          title: item.title,
-          resource_type: "file",
-          url: publicUrlData.publicUrl,
-          file_path: storagePath,
-          file_size_kb: item.fileSizeKb ?? null,
-        });
-      } else {
-        payload.push({
-          course_id: courseId,
-          uploaded_by: creatorId,
-          title: item.title,
-          resource_type: item.kind,
-          url: item.url,
-          file_path: null,
-          file_size_kb: null,
-        });
-      }
-    }
-
-    setStatusMessage("Saving course resource links...");
-    const { error: resInsertErr } = await supabase
-      .from("course_resources")
-      .insert(payload);
-
-    if (resInsertErr) {
-      throw new Error(`Course created, but saving resources failed: ${resInsertErr.message}`);
-    }
-  };
-
   const handleCreate = async (e: React.FormEvent, initialStatus: ContentStatus) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
     setError(null);
-    setStatusMessage("Creating course syllabus...");
 
     const generatedSlug =
       title
@@ -311,13 +111,10 @@ function NewCourseForm() {
 
       if (insertErr) throw insertErr;
 
-      await uploadCourseResources(data.id, user.id);
-
       router.push(`/dashboard/teacher/courses/${data.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create course.";
       setError(msg);
-      setStatusMessage(null);
       setLoading(false);
     }
   };
@@ -340,7 +137,7 @@ function NewCourseForm() {
           </div>
           <h1 className="text-2xl font-bold text-slate-800">Create New Course Syllabus</h1>
           <p className="text-xs text-slate-500">
-            Draft an open syllabus and attach video lectures, study files, and reference links.
+            Draft an open syllabus and add lessons and study materials from the course page.
           </p>
         </div>
 
@@ -348,12 +145,6 @@ function NewCourseForm() {
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
-          </div>
-        )}
-
-        {statusMessage && loading && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium">
-            {statusMessage}
           </div>
         )}
 
@@ -469,188 +260,6 @@ function NewCourseForm() {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40 bg-white"
               />
             </div>
-          </div>
-
-          {/* Course Resources Uploader (Videos, Files, Links) */}
-          <div className="pt-4 border-t border-slate-100 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-bold text-slate-800">
-                  Course Resources ({resources.length})
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Attach YouTube lectures, PDFs/notes/videos, or external study links.
-                </p>
-              </div>
-
-              <div className="inline-flex rounded-xl bg-slate-100 p-1 self-start">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("youtube");
-                    setResourceError(null);
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    activeTab === "youtube"
-                      ? "bg-white text-slate-800 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  <Video className="w-3.5 h-3.5 text-rose-600" /> YouTube
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("file");
-                    setResourceError(null);
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    activeTab === "file"
-                      ? "bg-white text-slate-800 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  <FileUp className="w-3.5 h-3.5 text-emerald-700" /> Upload File
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("link");
-                    setResourceError(null);
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    activeTab === "link"
-                      ? "bg-white text-slate-800 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  <Link2 className="w-3.5 h-3.5 text-[#5C899D]" /> Link
-                </button>
-              </div>
-            </div>
-
-            {resourceError && (
-              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-                {resourceError}
-              </div>
-            )}
-
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Resource Title
-                </label>
-                <input
-                  type="text"
-                  value={resourceTitle}
-                  onChange={(e) => setResourceTitle(e.target.value)}
-                  placeholder={
-                    activeTab === "youtube"
-                      ? "e.g. Lecture 1: Trigonometric Ratios & Identities"
-                      : activeTab === "file"
-                      ? "e.g. Chapter 8 Formula Sheet & Practice PDF"
-                      : "e.g. NCERT Exemplar / Reference Notes"
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
-                />
-              </div>
-
-              {activeTab === "file" ? (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Choose File (PDF, DOC/DOCX, PPT/PPTX, MP4/WEBM, ZIP, Images — up to 50MB)
-                  </label>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.md,.zip,.mp4,.webm,.mov,.png,.jpg,.jpeg"
-                    onChange={handleFileChange}
-                    className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                  />
-                  {selectedFile && (
-                    <p className="text-[11px] text-slate-500">
-                      Selected: <span className="font-semibold text-slate-700">{selectedFile.name}</span>{" "}
-                      ({Math.round(selectedFile.size / 1024)} KB)
-                    </p>
-                  )}
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={handleAddFileResource}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add File to Course
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    {activeTab === "youtube" ? "YouTube Video URL" : "Resource URL"}
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="url"
-                      value={resourceUrl}
-                      onChange={(e) => setResourceUrl(e.target.value)}
-                      placeholder={
-                        activeTab === "youtube"
-                          ? "https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                          : "https://example.com/study-notes"
-                      }
-                      className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#74B49B]/40"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleAddUrlResource(activeTab)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition shrink-0 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add {activeTab === "youtube" ? "Video" : "Link"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Attached Resources List */}
-            {resources.length > 0 && (
-              <div className="space-y-2">
-                {resources.map((res) => (
-                  <div
-                    key={res.id}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {res.kind === "youtube" && (
-                        <Video className="w-4 h-4 text-rose-600 shrink-0" />
-                      )}
-                      {res.kind === "file" && (
-                        <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
-                      )}
-                      {res.kind === "link" && (
-                        <Link2 className="w-4 h-4 text-[#5C899D] shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-800 truncate">{res.title}</p>
-                        <p className="text-[11px] text-slate-400 truncate">
-                          {res.kind === "file"
-                            ? `${res.file?.name} (${res.fileSizeKb ?? 0} KB)`
-                            : res.url}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveResource(res.id)}
-                      aria-label={`Remove ${res.title}`}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition cursor-pointer shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">

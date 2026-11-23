@@ -2,17 +2,29 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { BookOpen, Sparkles, Menu, X, User as UserIcon, LogOut, LayoutDashboard } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  BookOpen,
+  Sparkles,
+  Menu,
+  X,
+  User as UserIcon,
+  LogOut,
+  LayoutDashboard,
+  Bot,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   const { user, profile, signOut, getDashboardRoute } = useAuth();
 
   const navLinks = [
     { label: "Courses", href: "/courses" },
     { label: "Practice", href: "/practice" },
     { label: "Mentors", href: "/mentors" },
+    { label: "Mentor AI", href: "/mentor-ai", isAi: true },
     { label: "Flashcards", href: "/flashcards" },
     { label: "Community", href: "/community" },
     { label: "Scholarships", href: "/scholarships" },
@@ -40,16 +52,41 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-            {navLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:text-[#5C899D] hover:bg-[#A7D7C5]/15"
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
+            {navLinks.map((item) => {
+              const isActive = pathname === item.href;
+
+              if (item.isAi) {
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                      isActive
+                        ? "bg-[#74B49B]/20 text-[#427563]"
+                        : "text-[#427563] bg-[#74B49B]/10 hover:bg-[#74B49B]/20"
+                    }`}
+                  >
+                    <Bot className="w-3.5 h-3.5 text-[#5C899D]" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    isActive
+                      ? "text-[#5C899D] bg-[#A7D7C5]/20 font-semibold"
+                      : "text-slate-600 hover:text-[#5C899D] hover:bg-[#A7D7C5]/15"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Desktop Right CTA / User Status */}
@@ -118,16 +155,34 @@ export default function Header() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-[#A7D7C5]/30 bg-white px-4 pt-2 pb-6 space-y-2 shadow-lg">
-          {navLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-base font-medium transition text-slate-700 hover:bg-[#A7D7C5]/15 hover:text-[#5C899D]"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navLinks.map((item) => {
+            const isActive = pathname === item.href;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-3 py-2 rounded-lg text-base font-medium transition ${
+                  item.isAi
+                    ? "bg-[#74B49B]/10 text-[#427563] font-semibold"
+                    : isActive
+                    ? "bg-[#A7D7C5]/20 text-[#5C899D] font-semibold"
+                    : "text-slate-700 hover:bg-[#A7D7C5]/15 hover:text-[#5C899D]"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  {item.isAi && <Bot className="w-4 h-4 text-[#5C899D]" />}
+                  {item.label}
+                </span>
+                {item.isAi && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-white text-[#427563] border border-[#74B49B]/30">
+                    AI
+                  </span>
+                )}
+              </Link>
+            );
+          })}
           <div className="pt-3 border-t border-slate-100 space-y-2">
             {user ? (
               <>

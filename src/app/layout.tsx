@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import MentorAiAssistant from "@/components/MentorAiAssistant";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
           {/* min-h-[calc(100vh-140px)] reserves the space instantly to prevent footer shifting */}
           <main className="flex-1 w-full min-h-[calc(100vh-140px)]">{children}</main>
           <Footer />
+          <MentorAiAssistant />
         </AuthProvider>
 
         {/* Moving Google Adsense Script outside head to the body end for optimal performance */}
