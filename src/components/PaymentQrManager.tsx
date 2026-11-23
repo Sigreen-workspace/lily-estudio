@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client"; // Apne project ke Supabase client path ke hisaab se adjust karein
+import { supabase } from "@/lib/supabase";
 import { QrCode, Upload, Save, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 export interface PaymentSupportConfig {
@@ -21,7 +21,6 @@ const DEFAULT_CONFIG: PaymentSupportConfig = {
 };
 
 export default function PaymentQrManager() {
-  const supabase = createClient();
   const [config, setConfig] = useState<PaymentSupportConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,20 +28,28 @@ export default function PaymentQrManager() {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
+
     async function loadConfig() {
       const { data } = await supabase
-        .from("site_settings")
+        .from("platform_settings")
         .select("value")
         .eq("key", "payment_support")
-        .single();
+        .maybeSingle();
 
-      if (data?.value) {
+      if (!ignore && data?.value) {
         setConfig({ ...DEFAULT_CONFIG, ...(data.value as Partial<PaymentSupportConfig>) });
       }
-      setLoading(false);
+      if (!ignore) {
+        setLoading(false);
+      }
     }
+
     loadConfig();
-  }, [supabase]);
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,7 +88,7 @@ export default function PaymentQrManager() {
     setStatusMsg(null);
 
     try {
-      const { error } = await supabase.from("site_settings").upsert({
+      const { error } = await supabase.from("platform_settings").upsert({
         key: "payment_support",
         value: config,
         updated_at: new Date().toISOString(),
@@ -236,7 +243,7 @@ export default function PaymentQrManager() {
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || uploading}
           className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#74B49B] hover:bg-emerald-600 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
