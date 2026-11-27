@@ -5,8 +5,6 @@ import { Sparkles, X } from "lucide-react";
 
 interface MentorAiAssistantProps {
   courseTitle?: string;
-  courseLevel?: string;
-  academicTrack?: string;
 }
 
 export default function MentorAiAssistant({

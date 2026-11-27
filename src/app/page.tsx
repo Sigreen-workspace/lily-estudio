@@ -57,7 +57,7 @@ export default function HomePage() {
       }
     }
 
-    loadHomepageStats();
+    void loadHomepageStats();
     return () => {
       ignore = true;
     };
