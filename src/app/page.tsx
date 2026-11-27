@@ -1,9 +1,7 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import AskMentorForm from "@/components/AskMentorForm";
+import HomepageStats from "@/components/HomepageStats";
 import {
   GraduationCap,
   Award,
@@ -17,134 +15,85 @@ import {
   XCircle,
   UserCheck,
   Lock,
-  Send,
 } from "lucide-react";
 
-interface StatItem {
-  value: string;
-  label: string;
-}
+const LEARNING_TRACKS = [
+  "School (Classes 1–12)",
+  "Semester & Board Exams",
+  "Campus Placements",
+  "GATE & CAT",
+  "Scholarships & Study Abroad",
+];
 
-const DEFAULT_SOCIAL_PROOF: StatItem[] = [
-  { value: "25,000+", label: "Students Learning" },
-  { value: "500+", label: "Practice Tests" },
-  { value: "100+", label: "Study Resources" },
-  { value: "24/7", label: "AI Mentor" },
+const COMPARISON_ROWS = [
+  {
+    feature: "Structured Notes & Courses",
+    lily: "Classes 1–12, college & exam tracks",
+    others: "Scattered playlists or locked paywalls",
+  },
+  {
+    feature: "AI Doubt Mentor + Practice",
+    lily: "Built-in & private to your account",
+    others: "Generic chat without mocks or structure",
+  },
+  {
+    feature: "Mock Tests & Flashcards",
+    lily: "100% Free active recall & practice",
+    others: "Paid passes & subscription upsells",
+  },
+  {
+    feature: "Student Privacy",
+    lily: "No public names, scores, or tracking",
+    others: "Public boards & ad-heavy feeds",
+  },
+];
+
+const MODULES = [
+  {
+    title: "Course Library",
+    desc: "Ordered PDFs, slides, and notes from Classes 1–12 through college and exams.",
+    icon: GraduationCap,
+    href: "/courses",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  },
+  {
+    title: "Practice Tests",
+    desc: "Topic quizzes and exam-style tests with instant feedback and breakdowns.",
+    icon: BookCheck,
+    href: "/practice",
+    color: "bg-teal-50 text-teal-700 border-teal-100",
+  },
+  {
+    title: "Smart Flashcards",
+    desc: "Active recall decks to retain key formulas, definitions, and concepts.",
+    icon: Layers,
+    href: "/flashcards",
+    color: "bg-sky-50 text-sky-700 border-sky-100",
+  },
+  {
+    title: "Mentors",
+    desc: "Guidance for school-to-college choices, placements, GATE, CAT, and careers.",
+    icon: UserCheck,
+    href: "/mentors",
+    color: "bg-purple-50 text-purple-700 border-purple-100",
+  },
+  {
+    title: "Scholarship Tracker",
+    desc: "Filter verified opportunities by country, amount, degree, and deadline.",
+    icon: Globe,
+    href: "/scholarships",
+    color: "bg-cyan-50 text-cyan-700 border-cyan-100",
+  },
+  {
+    title: "Personal Dashboard",
+    desc: "Private streaks, saved resources, and study progress visible only to you.",
+    icon: Award,
+    href: "/dashboard",
+    color: "bg-amber-50 text-amber-700 border-amber-100",
+  },
 ];
 
 export default function HomePage() {
-  const router = useRouter();
-  const [socialProofStats, setSocialProofStats] = useState<StatItem[]>(DEFAULT_SOCIAL_PROOF);
-  const [statsVisible, setStatsVisible] = useState(true);
-  const [aiQuestion, setAiQuestion] = useState("");
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadHomepageStats() {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "homepage_stats")
-        .maybeSingle();
-
-      if (!ignore && data?.value) {
-        const val = data.value as { enabled?: boolean; stats?: StatItem[] };
-        if (typeof val.enabled === "boolean") setStatsVisible(val.enabled);
-        if (Array.isArray(val.stats) && val.stats.length > 0) {
-          setSocialProofStats(val.stats);
-        }
-      }
-    }
-
-    void loadHomepageStats();
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const handleAskMentor = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = aiQuestion.trim();
-    router.push(q ? `/mentor-ai?q=${encodeURIComponent(q)}` : "/mentor-ai");
-  };
-
-  const learningTracks = [
-    "School (Classes 1–12)",
-    "Semester & Board Exams",
-    "Campus Placements",
-    "GATE & CAT",
-    "Scholarships & Study Abroad",
-  ];
-
-  const comparisonRows = [
-    {
-      feature: "Structured Notes & Courses",
-      lily: "Classes 1–12, college & exam tracks",
-      others: "Scattered playlists or locked paywalls",
-    },
-    {
-      feature: "AI Doubt Mentor + Practice",
-      lily: "Built-in & private to your account",
-      others: "Generic chat without mocks or structure",
-    },
-    {
-      feature: "Mock Tests & Flashcards",
-      lily: "100% Free active recall & practice",
-      others: "Paid passes & subscription upsells",
-    },
-    {
-      feature: "Student Privacy",
-      lily: "No public names, scores, or tracking",
-      others: "Public boards & ad-heavy feeds",
-    },
-  ];
-
-  const modules = [
-    {
-      title: "Course Library",
-      desc: "Ordered PDFs, slides, and notes from Classes 1–12 through college and exams.",
-      icon: GraduationCap,
-      href: "/courses",
-      color: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    },
-    {
-      title: "Practice Tests",
-      desc: "Topic quizzes and exam-style tests with instant feedback and breakdowns.",
-      icon: BookCheck,
-      href: "/practice",
-      color: "bg-teal-50 text-teal-700 border-teal-100",
-    },
-    {
-      title: "Smart Flashcards",
-      desc: "Active recall decks to retain key formulas, definitions, and concepts.",
-      icon: Layers,
-      href: "/flashcards",
-      color: "bg-sky-50 text-sky-700 border-sky-100",
-    },
-    {
-      title: "Mentors",
-      desc: "Guidance for school-to-college choices, placements, GATE, CAT, and careers.",
-      icon: UserCheck,
-      href: "/mentors",
-      color: "bg-purple-50 text-purple-700 border-purple-100",
-    },
-    {
-      title: "Scholarship Tracker",
-      desc: "Filter verified opportunities by country, amount, degree, and deadline.",
-      icon: Globe,
-      href: "/scholarships",
-      color: "bg-cyan-50 text-cyan-700 border-cyan-100",
-    },
-    {
-      title: "Personal Dashboard",
-      desc: "Private streaks, saved resources, and study progress visible only to you.",
-      icon: Award,
-      href: "/dashboard",
-      color: "bg-amber-50 text-amber-700 border-amber-100",
-    },
-  ];
-
   return (
     <div className="space-y-16 pb-16">
       {/* 1. Hero Section */}
@@ -182,7 +131,7 @@ export default function HomePage() {
           </div>
 
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-            {learningTracks.map((track) => (
+            {LEARNING_TRACKS.map((track) => (
               <span
                 key={track}
                 className="px-3 py-1 rounded-lg bg-white/85 border border-slate-200/80 text-[11px] font-semibold text-slate-600"
@@ -194,30 +143,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Social Proof Metrics (Admin Editable, Stable Layout) */}
-      {statsVisible && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 min-h-28 flex items-center">
-            <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-6 text-center divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              {socialProofStats.map((stat, idx) => (
-                <div
-                  key={`${stat.label}-${idx}`}
-                  className={`space-y-1 ${idx >= 2 ? "pt-4 lg:pt-0" : ""} ${
-                    idx % 2 === 1 ? "border-l border-slate-100 lg:border-l-0" : ""
-                  }`}
-                >
-                  <p className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight tabular-nums">
-                    {stat.value}
-                  </p>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-500">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* 2. Social Proof Metrics (Admin Editable via platform_settings) */}
+      <HomepageStats />
 
       {/* 3. Focused AI Mentor Prompt */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -231,21 +158,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <form onSubmit={handleAskMentor} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={aiQuestion}
-              onChange={(e) => setAiQuestion(e.target.value)}
-              placeholder="e.g. Explain Nyquist Criterion or make a revision plan..."
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#74B49B]"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#5C899D] hover:bg-[#4a7285] text-white text-xs sm:text-sm font-bold transition cursor-pointer shrink-0"
-            >
-              <Send className="w-4 h-4" /> Ask Mentor
-            </button>
-          </form>
+          <AskMentorForm />
         </div>
       </section>
 
@@ -268,7 +181,7 @@ export default function HomePage() {
           </div>
 
           <div className="divide-y divide-slate-100">
-            {comparisonRows.map((row) => (
+            {COMPARISON_ROWS.map((row) => (
               <div
                 key={row.feature}
                 className="grid grid-cols-12 items-center px-5 py-4 text-xs sm:text-sm gap-2"
@@ -300,7 +213,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {modules.map((mod) => {
+          {MODULES.map((mod) => {
             const Icon = mod.icon;
             return (
               <div
