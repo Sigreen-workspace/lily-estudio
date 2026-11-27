@@ -1,14 +1,26 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MentorAiAssistant from "@/components/MentorAiAssistant";
 import { AuthProvider } from "@/context/AuthContext";
 
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
 export const metadata: Metadata = {
-  title: "Lily Estudio — Learn. Practice. Grow.",
-  description: "A free, student-centric study ecosystem for college learners, exam-prep students, and study-abroad aspirants.",
+  metadataBase: new URL("https://www.lilyestudio.com"),
+  title: {
+    default: "Lily Estudio — Learn. Practice. Grow.",
+    template: "%s | Lily Estudio",
+  },
+  description:
+    "A free, privacy-first study ecosystem for school (Classes 1–12), college learners, exam-prep students, and study-abroad aspirants.",
 };
 
 export default function RootLayout({
@@ -17,28 +29,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        {/* Preconnect to Google Adsense for faster connection */}
-        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-      </head>
-      <body className="antialiased min-h-screen flex flex-col bg-[#F8FAF8] text-slate-800">
+    <html lang="en" className={plusJakarta.variable}>
+      <body
+        className={`${plusJakarta.className} antialiased min-h-screen flex flex-col bg-[#F8FAF8] text-slate-800 overflow-x-hidden`}
+      >
         <AuthProvider>
           <Header />
-          {/* min-h-[calc(100vh-140px)] reserves the space instantly to prevent footer shifting */}
-          <main className="flex-1 w-full min-h-[calc(100vh-140px)]">{children}</main>
+          <main className="flex-1 w-full">{children}</main>
           <Footer />
           <MentorAiAssistant />
         </AuthProvider>
-
-        {/* Moving Google Adsense Script outside head to the body end for optimal performance */}
-        <Script
-          id="adsense-script"
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3862309981201591"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
       </body>
     </html>
   );

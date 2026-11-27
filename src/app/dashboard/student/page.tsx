@@ -34,6 +34,7 @@ import {
   X,
   Send,
   ShieldCheck,
+  Activity,
 } from "lucide-react";
 
 export default function StudentDashboardPage() {
@@ -348,7 +349,7 @@ function StudentDashboardContent() {
       <NoticeBoard />
 
       {/* Primary Navigation Launchers */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <Link
           href="/courses"
           className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group"
@@ -398,6 +399,19 @@ function StudentDashboardContent() {
           <div>
             <strong className="text-xs font-bold text-slate-800 block">Mentorship</strong>
             <span className="text-[11px] text-slate-500">Inquiry status</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/pulse"
+          className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group col-span-2 sm:col-span-1"
+        >
+          <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-[#5C899D] group-hover:text-white transition">
+            <Activity className="w-4 h-4" />
+          </div>
+          <div>
+            <strong className="text-xs font-bold text-slate-800 block">Learning Pulse</strong>
+            <span className="text-[11px] text-slate-500">Live trends &amp; stats</span>
           </div>
         </Link>
       </div>

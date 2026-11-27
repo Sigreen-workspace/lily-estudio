@@ -27,13 +27,14 @@ export default function Navbar() {
 
     async function loadNavbarData() {
       if (!user) {
-        setUnreadCount(0);
-        setAppStatus(null);
+        if (!ignore) {
+          setUnreadCount(0);
+          setAppStatus(null);
+        }
         return;
       }
 
       try {
-        // Fetch unread notifications count
         const { count, error } = await supabase
           .from("notifications")
           .select("*", { count: "exact", head: true })
@@ -44,7 +45,6 @@ export default function Navbar() {
           setUnreadCount(count);
         }
 
-        // Check if user has a pending mentor application
         const { data: mentorData } = await supabase
           .from("mentor_profiles")
           .select("verification_status")
@@ -63,29 +63,35 @@ export default function Navbar() {
       }
     }
 
-    loadNavbarData();
+    void loadNavbarData();
+
+    if (!user) {
+      return () => {
+        ignore = true;
+      };
+    }
 
     const channel = supabase
-      .channel("navbar-telemetry-channel")
+      .channel(`navbar-notifications-${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "notifications",
-          filter: user ? `user_id=eq.${user.id}` : undefined,
+          filter: `user_id=eq.${user.id}`,
         },
         () => {
-          loadNavbarData();
+          void loadNavbarData();
         }
       )
       .subscribe();
 
     return () => {
       ignore = true;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [user, pathname, profile]);
+  }, [user, profile]);
 
   const getDashboardHref = () => {
     if (!profile) return "/dashboard/student";
@@ -101,7 +107,6 @@ export default function Navbar() {
     }
   };
 
-  // Dynamic Navigation Links based on User Role
   const getNavLinks = () => {
     const role = profile?.role;
     if (role === "mentor") {
@@ -109,6 +114,7 @@ export default function Navbar() {
         { href: "/dashboard/mentor", label: "Mentor Hub" },
         { href: "/scholarships", label: "Scholarships" },
         { href: "/community", label: "Community" },
+        ...(user ? [{ href: "/pulse", label: "Pulse" }] : []),
       ];
     }
     if (role === "teacher") {
@@ -116,6 +122,7 @@ export default function Navbar() {
         { href: "/dashboard/teacher", label: "Teacher Hub" },
         { href: "/courses", label: "Courses" },
         { href: "/community", label: "Community" },
+        ...(user ? [{ href: "/pulse", label: "Pulse" }] : []),
       ];
     }
     if (role === "admin") {
@@ -123,6 +130,7 @@ export default function Navbar() {
         { href: "/dashboard/admin", label: "Admin Hub" },
         { href: "/scholarships", label: "Scholarships" },
         { href: "/community", label: "Community" },
+        ...(user ? [{ href: "/pulse", label: "Pulse" }] : []),
       ];
     }
     return [
@@ -132,17 +140,18 @@ export default function Navbar() {
       { href: "/scholarships", label: "Scholarships" },
       { href: "/community", label: "Community" },
       { href: "/mentors", label: "Mentors" },
+      ...(user ? [{ href: "/pulse", label: "Pulse" }] : []),
     ];
   };
 
   const navLinks = getNavLinks();
 
   return (
-    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="sticky top-0 z-40 h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex items-center justify-between h-full">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-9 h-9 rounded-2xl bg-linear-to-br from-[#74B49B] to-[#5C899D] flex items-center justify-center text-white shadow-2xs">
               <GraduationCap className="w-5 h-5" />
             </div>
@@ -164,7 +173,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
                     isActive
                       ? "bg-[#74B49B]/15 text-[#427563]"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -177,7 +186,7 @@ export default function Navbar() {
           </div>
 
           {/* Right Action Items */}
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-2.5 shrink-0">
             {user ? (
               <>
                 <Link
@@ -196,7 +205,7 @@ export default function Navbar() {
 
                 <Link
                   href={getDashboardHref()}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl transition shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold whitespace-nowrap rounded-xl transition shadow-2xs"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
                   {appStatus === "pending" || appStatus === "under_review" ? (
@@ -220,7 +229,7 @@ export default function Navbar() {
 
                 <button
                   type="button"
-                  onClick={() => signOut()}
+                  onClick={() => void signOut()}
                   className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                   title="Sign Out"
                 >
@@ -231,13 +240,13 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/auth/login"
-                  className="px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+                  className="px-4 py-1.5 text-xs font-semibold whitespace-nowrap text-slate-700 hover:bg-slate-100 rounded-xl transition"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="px-4 py-1.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-2xs transition"
+                  className="px-4 py-1.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold whitespace-nowrap rounded-xl shadow-2xs transition"
                 >
                   Get Started
                 </Link>
@@ -312,7 +321,7 @@ export default function Navbar() {
                   type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    signOut();
+                    void signOut();
                   }}
                   className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 text-left cursor-pointer"
                 >

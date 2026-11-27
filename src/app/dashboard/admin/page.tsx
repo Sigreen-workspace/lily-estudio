@@ -14,11 +14,12 @@ import {
   PlatformFeedback,
   SocialContactsSettings,
 } from "@/lib/supabase";
-import { ShieldAlert, ExternalLink, Share2, Users, QrCode } from "lucide-react";
+import { ShieldAlert, ExternalLink, Share2, Users, QrCode, BarChart3 } from "lucide-react";
 
 import OverviewTab from "./tabs/OverviewTab";
 import SocialSettingsTab from "./tabs/SocialSettingsTab";
 import PaymentQrTab, { PaymentSupportSettings } from "./tabs/PaymentQrTab";
+import HomepageStatsTab, { HomepageStatsSettings } from "./tabs/HomepageStatsTab";
 import TeamManagementTab from "./tabs/TeamManagementTab";
 import ScholarshipsTab from "./tabs/ScholarshipsTab";
 import FeedbacksTab from "./tabs/FeedbacksTab";
@@ -38,6 +39,16 @@ interface TeamMember {
   display_order: number;
 }
 
+const DEFAULT_HOMEPAGE_STATS: HomepageStatsSettings = {
+  enabled: true,
+  stats: [
+    { value: "25,000+", label: "Students Learning" },
+    { value: "500+", label: "Practice Tests" },
+    { value: "100+", label: "Study Resources" },
+    { value: "24/7", label: "AI Mentor" },
+  ],
+};
+
 export default function AdminDashboardPage() {
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
@@ -51,6 +62,7 @@ function AdminDashboardContent() {
     | "overview"
     | "social_settings"
     | "payment_qr"
+    | "homepage_stats"
     | "scholarships"
     | "feedbacks"
     | "teachers"
@@ -97,6 +109,10 @@ function AdminDashboardContent() {
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentSavedMsg, setPaymentSavedMsg] = useState(false);
 
+  const [statsSettings, setStatsSettings] = useState<HomepageStatsSettings>(DEFAULT_HOMEPAGE_STATS);
+  const [savingStats, setSavingStats] = useState(false);
+  const [statsSavedMsg, setStatsSavedMsg] = useState(false);
+
   const [showAddScholarship, setShowAddScholarship] = useState(false);
   const [scTitle, setScTitle] = useState("");
   const [scProvider, setScProvider] = useState("");
@@ -126,19 +142,21 @@ function AdminDashboardContent() {
 
     async function loadAdminData() {
       try {
-        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, payRes, adminAppRes, teamRes] = await Promise.all([
-          supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
-          supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
-          supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }),
-          supabase.from("forum_reports").select("*").order("created_at", { ascending: false }),
-          supabase.from("profiles").select("*").or("role.eq.teacher,teacher_verification_status.in.(pending,under_review)").order("created_at", { ascending: false }),
-          supabase.from("scholarships").select("*").order("created_at", { ascending: false }),
-          supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
-          supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
-          supabase.from("platform_settings").select("*").eq("key", "payment_support").maybeSingle(),
-          supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
-          supabase.from("team_members").select("*").order("display_order", { ascending: true }),
-        ]);
+        const [uRes, cRes, mRes, rRes, tRes, sRes, fRes, setRes, payRes, statsRes, adminAppRes, teamRes] =
+          await Promise.all([
+            supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50),
+            supabase.from("courses").select("*, subjects(*)").order("created_at", { ascending: false }),
+            supabase.from("mentor_profiles").select("*").order("created_at", { ascending: false }),
+            supabase.from("forum_reports").select("*").order("created_at", { ascending: false }),
+            supabase.from("profiles").select("*").or("role.eq.teacher,teacher_verification_status.in.(pending,under_review)").order("created_at", { ascending: false }),
+            supabase.from("scholarships").select("*").order("created_at", { ascending: false }),
+            supabase.from("platform_feedbacks").select("*").order("created_at", { ascending: false }),
+            supabase.from("platform_settings").select("*").eq("key", "social_contacts").maybeSingle(),
+            supabase.from("platform_settings").select("*").eq("key", "payment_support").maybeSingle(),
+            supabase.from("platform_settings").select("*").eq("key", "homepage_stats").maybeSingle(),
+            supabase.from("profiles").select("*").eq("admin_verification_status", "pending").order("created_at", { ascending: false }),
+            supabase.from("team_members").select("*").order("display_order", { ascending: true }),
+          ]);
 
         if (!ignore) {
           if (uRes.data) setUsersList(uRes.data as UserProfile[]);
@@ -155,6 +173,12 @@ function AdminDashboardContent() {
             setPaymentSettings((prev) => ({
               ...prev,
               ...(payRes.data.value as Partial<PaymentSupportSettings>),
+            }));
+          }
+          if (statsRes.data?.value) {
+            setStatsSettings((prev) => ({
+              ...prev,
+              ...(statsRes.data.value as Partial<HomepageStatsSettings>),
             }));
           }
           if (adminAppRes.data) setAdminApplicants(adminAppRes.data as UserProfile[]);
@@ -196,6 +220,22 @@ function AdminDashboardContent() {
       setTimeout(() => setPaymentSavedMsg(false), 3000);
     } finally {
       setSavingPayment(false);
+    }
+  };
+
+  const handleSaveStatsSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingStats(true);
+    try {
+      await supabase.from("platform_settings").upsert({
+        key: "homepage_stats",
+        value: statsSettings,
+        updated_at: new Date().toISOString(),
+      });
+      setStatsSavedMsg(true);
+      setTimeout(() => setStatsSavedMsg(false), 3000);
+    } finally {
+      setSavingStats(false);
     }
   };
 
@@ -404,6 +444,7 @@ function AdminDashboardContent() {
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
         <button type="button" onClick={() => setActiveTab("overview")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer ${activeTab === "overview" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"}`}>Overview</button>
+        <button type="button" onClick={() => setActiveTab("homepage_stats")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "homepage_stats" ? "bg-[#5C899D] text-white" : "bg-slate-100 text-slate-600"}`}><BarChart3 className="w-3.5 h-3.5" /> Home Stats</button>
         <button type="button" onClick={() => setActiveTab("social_settings")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "social_settings" ? "bg-purple-700 text-white" : "bg-slate-100 text-slate-600"}`}><Share2 className="w-3.5 h-3.5" /> Socials</button>
         <button type="button" onClick={() => setActiveTab("payment_qr")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "payment_qr" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600"}`}><QrCode className="w-3.5 h-3.5" /> Payment QR</button>
         <button type="button" onClick={() => setActiveTab("team")} className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 ${activeTab === "team" ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-600"}`}><Users className="w-3.5 h-3.5" /> Team ({teamList.length})</button>
@@ -422,6 +463,7 @@ function AdminDashboardContent() {
       ) : (
         <>
           {activeTab === "overview" && <OverviewTab scholarshipsList={scholarshipsList} feedbacksList={feedbacksList} teachersList={teachersList} usersList={usersList} />}
+          {activeTab === "homepage_stats" && <HomepageStatsTab statsSettings={statsSettings} setStatsSettings={setStatsSettings} onSave={handleSaveStatsSettings} saving={savingStats} savedMsg={statsSavedMsg} />}
           {activeTab === "social_settings" && <SocialSettingsTab socials={socials} setSocials={setSocials} onSave={handleSaveSocials} saving={savingSocials} savedMsg={socialsSavedMsg} />}
           {activeTab === "payment_qr" && <PaymentQrTab paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} onSave={handleSavePaymentSettings} saving={savingPayment} savedMsg={paymentSavedMsg} />}
           {activeTab === "team" && <TeamManagementTab teamList={teamList} showAddTeam={showAddTeam} setShowAddTeam={setShowAddTeam} editingTeamId={editingTeamId} teamName={teamName} setTeamName={setTeamName} teamRole={teamRole} setTeamRole={setTeamRole} teamImage={teamImage} setTeamImage={setTeamImage} teamBio={teamBio} setTeamBio={setTeamBio} teamOrder={teamOrder} setTeamOrder={setTeamOrder} isSubmittingTeam={isSubmittingTeam} onSave={handleSaveTeamMember} onEdit={handleStartEditTeam} onDelete={handleDeleteTeamMember} onReset={handleResetTeamForm} />}

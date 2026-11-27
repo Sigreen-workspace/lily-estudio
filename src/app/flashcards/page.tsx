@@ -13,7 +13,7 @@ import {
   Sparkles,
   Lock,
   Globe,
-  Trash2
+  Trash2,
 } from "lucide-react";
 
 export default function FlashcardsPage() {
@@ -25,7 +25,6 @@ export default function FlashcardsPage() {
   const [trackFilter, setTrackFilter] = useState<AcademicTrack | "all">("all");
   const [loading, setLoading] = useState(true);
 
-  // New deck creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -34,8 +33,10 @@ export default function FlashcardsPage() {
   const [newIsPublic, setNewIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  // Check if user is teacher or admin
-  const isTeacherOrAdmin = profile?.role === "teacher" || profile?.role === "admin" || profile?.assigned_roles?.includes("admin");
+  const isTeacherOrAdmin =
+    profile?.role === "teacher" ||
+    profile?.role === "admin" ||
+    profile?.assigned_roles?.includes("admin");
 
   useEffect(() => {
     let ignore = false;
@@ -111,7 +112,6 @@ export default function FlashcardsPage() {
       setNewSubject("");
       setNewIsPublic(false);
 
-      // Deck banne ke baad seedhe us deck ke study/management page par redirect karein jahan multiple cards add kiye ja sakein
       if (data) {
         router.push(`/flashcards/${data.id}`);
       }
@@ -161,6 +161,7 @@ export default function FlashcardsPage() {
 
         {user && (
           <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#74B49B] hover:bg-[#5f9c85] text-white text-xs font-semibold rounded-xl shadow-xs transition shrink-0 cursor-pointer"
           >
@@ -173,6 +174,7 @@ export default function FlashcardsPage() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
+            type="button"
             onClick={() => setActiveTab("all")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === "all"
@@ -184,6 +186,7 @@ export default function FlashcardsPage() {
           </button>
           {user && (
             <button
+              type="button"
               onClick={() => setActiveTab("my")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === "my"
@@ -268,6 +271,7 @@ export default function FlashcardsPage() {
                       )}
                       {isOwner && (
                         <button
+                          type="button"
                           onClick={() => handleDeleteDeck(deck.id)}
                           className="p-1 text-slate-300 hover:text-rose-500 rounded transition cursor-pointer"
                           title="Delete Deck"
@@ -317,6 +321,7 @@ export default function FlashcardsPage() {
                 <h3 className="text-base font-bold text-slate-800">Create New Flashcard Deck</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
                 className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
               >
