@@ -35,7 +35,7 @@ export default function HomepageStats() {
           setEnabled(val.enabled);
         }
         if (Array.isArray(val.stats) && val.stats.length > 0) {
-          setStats(val.stats);
+          setStats(val.stats.slice(0, 4));
         }
       }
     }
@@ -47,25 +47,26 @@ export default function HomepageStats() {
     };
   }, []);
 
-  if (!enabled) {
-    return null;
-  }
-
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 min-h-28 flex items-center">
+    <section
+      aria-hidden={!enabled}
+      className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 ${
+        enabled ? "" : "hidden"
+      }`}
+    >
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 min-h-[120px] flex items-center">
         <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-6 text-center divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
           {stats.map((stat, idx) => (
             <div
               key={`${stat.label}-${idx}`}
-              className={`space-y-1 ${idx >= 2 ? "pt-4 lg:pt-0" : ""} ${
+              className={`space-y-1 min-w-0 ${idx >= 2 ? "pt-4 lg:pt-0" : ""} ${
                 idx % 2 === 1 ? "border-l border-slate-100 lg:border-l-0" : ""
               }`}
             >
-              <p className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight tabular-nums">
+              <p className="text-2xl sm:text-4xl font-extrabold text-slate-800 tracking-tight tabular-nums truncate">
                 {stat.value}
               </p>
-              <p className="text-xs sm:text-sm font-semibold text-slate-500">
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 truncate">
                 {stat.label}
               </p>
             </div>
