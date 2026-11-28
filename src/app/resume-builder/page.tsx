@@ -436,8 +436,8 @@ function ResumeBuilderWorkspace() {
     const baseName =
       rawName && rawName.toLowerCase() !== "your full name"
         ? rawName.replace(/\s+/g, "_")
-        : "Candidate";
-    document.title = `${baseName}_Resume`;
+        : "Resume";
+    document.title = baseName;
     window.print();
     window.setTimeout(() => {
       document.title = prevTitle;
