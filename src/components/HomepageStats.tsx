@@ -54,7 +54,7 @@ export default function HomepageStats() {
         enabled ? "" : "hidden"
       }`}
     >
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 min-h-[120px] flex items-center">
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 min-h-30 flex items-center">
         <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-6 text-center divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
           {stats.map((stat, idx) => (
             <div

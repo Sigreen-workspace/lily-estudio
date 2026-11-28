@@ -11,13 +11,73 @@
   --lily-muted: #718096;
 }
 
-body {
-  background-color: var(--lily-bg);
-  color: var(--lily-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@layer base {
+  html,
+  body {
+    background-color: var(--lily-bg);
+    color: var(--lily-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@layer utilities {
+  .no-print {
+    display: block;
+  }
+}
+
+@media print {
+  @layer utilities {
+    .no-print {
+      display: none !important;
+    }
+  }
+
+  html,
+  body {
+    display: block !important;
+    min-height: auto !important;
+    height: auto !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  header,
+  nav,
+  footer,
+  aside,
+  .no-print,
+  [data-no-print="true"] {
+    display: none !important;
+  }
+
+  .resume-print-wrapper {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .resume-print-sheet {
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
 }

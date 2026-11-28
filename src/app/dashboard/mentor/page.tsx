@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import NoticeBoard from "@/components/NoticeBoard";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +17,7 @@ import {
   Send,
   Trash2,
   ShieldAlert,
+  FileText,
 } from "lucide-react";
 
 export default function MentorDashboardPage() {
@@ -49,7 +51,10 @@ function MentorDashboardContent() {
   const [responseTexts, setResponseTexts] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [mentorRecord, setMentorRecord] = useState<{ is_verified?: boolean; verification_status?: string } | null>(null);
+  const [mentorRecord, setMentorRecord] = useState<{
+    is_verified?: boolean;
+    verification_status?: string;
+  } | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -81,8 +86,11 @@ function MentorDashboardContent() {
 
         if (!ignore && !error && data) {
           const studentIds = data.map((r) => r.student_id).filter(Boolean);
-          
-          const profileMap: Record<string, { full_name?: string; institution?: string; target_track?: string }> = {};
+
+          const profileMap: Record<
+            string,
+            { full_name?: string; institution?: string; target_track?: string }
+          > = {};
           if (studentIds.length > 0) {
             const { data: profilesData } = await supabase
               .from("profiles")
@@ -106,7 +114,7 @@ function MentorDashboardContent() {
           }));
 
           setRequests(formattedRequests as MentorshipRequestItem[]);
-          
+
           const initialResponses: Record<string, string> = {};
           data.forEach((r) => {
             if (r.mentor_response) {
@@ -122,14 +130,13 @@ function MentorDashboardContent() {
       }
     }
 
-    loadMentorData();
+    void loadMentorData();
 
     return () => {
       ignore = true;
     };
   }, [user]);
 
-  // Handle Request Status Update (Accept / Completed)
   const handleUpdateStatus = async (requestId: string, newStatus: string) => {
     setProcessingId(requestId);
     try {
@@ -150,7 +157,6 @@ function MentorDashboardContent() {
     }
   };
 
-  // Handle Sending Mentor Contact / Response Link
   const handleSendResponse = async (requestId: string) => {
     const messageText = responseTexts[requestId];
     if (!messageText || !messageText.trim()) {
@@ -162,15 +168,19 @@ function MentorDashboardContent() {
     try {
       const { error } = await supabase
         .from("mentorship_requests")
-        .update({ 
+        .update({
           mentor_response: messageText.trim(),
-          status: "accepted" 
+          status: "accepted",
         })
         .eq("id", requestId);
 
       if (!error) {
         setRequests((prev) =>
-          prev.map((req) => (req.id === requestId ? { ...req, mentor_response: messageText.trim(), status: "accepted" } : req))
+          prev.map((req) =>
+            req.id === requestId
+              ? { ...req, mentor_response: messageText.trim(), status: "accepted" }
+              : req
+          )
         );
         alert("Contact link & response shared successfully with the student!");
       } else {
@@ -181,7 +191,6 @@ function MentorDashboardContent() {
     }
   };
 
-  // Handle Delete Request for Mentor
   const handleDeleteRequest = async (requestId: string) => {
     if (!confirm("Do you want to permanently delete this mentorship record?")) return;
     setDeletingId(requestId);
@@ -206,11 +215,11 @@ function MentorDashboardContent() {
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const acceptedCount = requests.filter((r) => r.status === "accepted").length;
-  
+
   const isMentorVerified = Boolean(
     profile?.role === "admin" ||
-    mentorRecord?.is_verified ||
-    mentorRecord?.verification_status === "approved"
+      mentorRecord?.is_verified ||
+      mentorRecord?.verification_status === "approved"
   );
 
   return (
@@ -233,15 +242,25 @@ function MentorDashboardContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {/* Request Admin Access Button */}
+          <Link
+            href="/resume-builder"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold shadow-2xs transition"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#5C899D]" /> Resume Builder
+          </Link>
+
           {profile?.role !== "admin" && !profile?.assigned_roles?.includes("admin") && (
             <button
               type="button"
               onClick={async () => {
-                const reason = prompt("State your reason for requesting platform administrative rights:");
+                const reason = prompt(
+                  "State your reason for requesting platform administrative rights:"
+                );
                 if (!reason?.trim()) return;
 
-                const { error } = await supabase.rpc("apply_for_admin_role", { reason_text: reason.trim() });
+                const { error } = await supabase.rpc("apply_for_admin_role", {
+                  reason_text: reason.trim(),
+                });
                 if (!error) {
                   alert("Admin access request successfully submitted for Root Admin review!");
                 } else {
@@ -255,11 +274,15 @@ function MentorDashboardContent() {
           )}
 
           <div className="p-4 bg-white/90 backdrop-blur-xs rounded-2xl border border-slate-200 text-xs space-y-0.5 shadow-2xs min-w-32">
-            <span className="text-[10px] font-bold uppercase text-slate-400 block">Pending Requests</span>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">
+              Pending Requests
+            </span>
             <strong className="text-lg font-extrabold text-amber-600">{pendingCount}</strong>
           </div>
           <div className="p-4 bg-white/90 backdrop-blur-xs rounded-2xl border border-slate-200 text-xs space-y-0.5 shadow-2xs min-w-32">
-            <span className="text-[10px] font-bold uppercase text-slate-400 block">Active Sessions</span>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">
+              Active Sessions
+            </span>
             <strong className="text-lg font-extrabold text-emerald-600">{acceptedCount}</strong>
           </div>
         </div>
@@ -273,9 +296,13 @@ function MentorDashboardContent() {
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-[#5C899D]" />
-            <h2 className="text-base font-bold text-slate-800">Student Appointment &amp; Advisory Inquiries</h2>
+            <h2 className="text-base font-bold text-slate-800">
+              Student Appointment &amp; Advisory Inquiries
+            </h2>
           </div>
-          <span className="text-xs font-semibold text-slate-500">Total Inquiries: {requests.length}</span>
+          <span className="text-xs font-semibold text-slate-500">
+            Total Inquiries: {requests.length}
+          </span>
         </div>
 
         {loading ? (
@@ -289,7 +316,8 @@ function MentorDashboardContent() {
             <Users className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700">No mentorship requests yet</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              When students submit consultation requests through the public Mentors directory, they will appear here instantly.
+              When students submit consultation requests through the public Mentors directory, they
+              will appear here instantly.
             </p>
           </div>
         ) : (
@@ -317,7 +345,11 @@ function MentorDashboardContent() {
                         {req.profiles?.full_name || "Scholar"}
                       </span>
                       <span className="text-[11px] text-slate-500 font-medium">
-                        ({req.profiles?.institution || "Student"} • Track: <strong className="capitalize text-slate-700">{req.profiles?.target_track || "College"}</strong>)
+                        ({req.profiles?.institution || "Student"} • Track:{" "}
+                        <strong className="capitalize text-slate-700">
+                          {req.profiles?.target_track || "College"}
+                        </strong>
+                        )
                       </span>
                     </div>
 
@@ -331,7 +363,8 @@ function MentorDashboardContent() {
                     </div>
 
                     <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" /> Requested on {new Date(req.created_at).toLocaleDateString()}
+                      <Calendar className="w-3 h-3 text-slate-400" /> Requested on{" "}
+                      {new Date(req.created_at).toLocaleDateString()}
                     </span>
                   </div>
 
@@ -379,7 +412,9 @@ function MentorDashboardContent() {
                       type="text"
                       placeholder="e.g. WhatsApp: https://wa.me/91XXXXXXXXXX or Insta: @myhandle"
                       value={responseTexts[req.id] || ""}
-                      onChange={(e) => setResponseTexts({ ...responseTexts, [req.id]: e.target.value })}
+                      onChange={(e) =>
+                        setResponseTexts({ ...responseTexts, [req.id]: e.target.value })
+                      }
                       className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#74B49B]"
                     />
                     <button
@@ -394,7 +429,8 @@ function MentorDashboardContent() {
                   </div>
                   {req.mentor_response && (
                     <p className="text-[11px] text-emerald-700 font-medium">
-                      ✓ Currently shared link/message: <span className="underline">{req.mentor_response}</span>
+                      ✓ Currently shared link/message:{" "}
+                      <span className="underline">{req.mentor_response}</span>
                     </p>
                   )}
                 </div>

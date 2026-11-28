@@ -35,6 +35,7 @@ import {
   Send,
   ShieldCheck,
   Activity,
+  FileText,
 } from "lucide-react";
 
 export default function StudentDashboardPage() {
@@ -154,7 +155,7 @@ function StudentDashboardContent() {
       }
     }
 
-    loadDashboardData();
+    void loadDashboardData();
 
     return () => {
       ignore = true;
@@ -247,7 +248,7 @@ function StudentDashboardContent() {
   // Strict Role Checking: Only true if role is explicitly 'teacher' AND verification status is approved
   const isTeacherApproved = Boolean(
     profile?.role === "teacher" &&
-    (profile?.is_teacher_verified === true || profile?.teacher_verification_status === "approved")
+      (profile?.is_teacher_verified === true || profile?.teacher_verification_status === "approved")
   );
 
   const isMentorApproved = Boolean(
@@ -256,11 +257,11 @@ function StudentDashboardContent() {
 
   const isPendingReview = Boolean(
     !isTeacherApproved &&
-    !isMentorApproved &&
-    (profile?.teacher_verification_status === "pending" ||
-     profile?.teacher_verification_status === "under_review" ||
-     mentorAppStatus === "pending" ||
-     mentorAppStatus === "under_review")
+      !isMentorApproved &&
+      (profile?.teacher_verification_status === "pending" ||
+        profile?.teacher_verification_status === "under_review" ||
+        mentorAppStatus === "pending" ||
+        mentorAppStatus === "under_review")
   );
 
   return (
@@ -276,7 +277,11 @@ function StudentDashboardContent() {
           </h1>
           <p className="text-xs sm:text-sm text-slate-600">
             {profile?.institution ? `${profile.institution} • ` : ""}
-            Track: <strong className="capitalize text-slate-700">{profile?.target_track || "College"}</strong> • Learning Preference: {profile?.learning_preference || "Visual"}
+            Track:{" "}
+            <strong className="capitalize text-slate-700">
+              {profile?.target_track || "College"}
+            </strong>{" "}
+            • Learning Preference: {profile?.learning_preference || "Visual"}
           </p>
         </div>
 
@@ -292,9 +297,7 @@ function StudentDashboardContent() {
                 {distinctActiveDays} Active Study {distinctActiveDays === 1 ? "Day" : "Days"}
               </strong>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Milestone days through honest study.
-            </p>
+            <p className="text-[11px] text-slate-500">Milestone days through honest study.</p>
           </div>
 
           {/* Apply as Educator / Mentor Action */}
@@ -349,7 +352,7 @@ function StudentDashboardContent() {
       <NoticeBoard />
 
       {/* Primary Navigation Launchers */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <Link
           href="/courses"
           className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group"
@@ -390,6 +393,19 @@ function StudentDashboardContent() {
         </Link>
 
         <Link
+          href="/resume-builder"
+          className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group"
+        >
+          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <strong className="text-xs font-bold text-slate-800 block">CV / Resume Maker</strong>
+            <span className="text-[11px] text-slate-500">ATS &amp; custom templates</span>
+          </div>
+        </Link>
+
+        <Link
           href="/dashboard/student/requests"
           className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group"
         >
@@ -404,7 +420,7 @@ function StudentDashboardContent() {
 
         <Link
           href="/pulse"
-          className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group col-span-2 sm:col-span-1"
+          className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#74B49B] transition space-y-2 group"
         >
           <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-[#5C899D] group-hover:text-white transition">
             <Activity className="w-4 h-4" />
@@ -426,7 +442,10 @@ function StudentDashboardContent() {
                 <BookOpen className="w-4 h-4 text-[#74B49B]" />
                 <h2 className="text-base font-bold text-slate-800">Course Progress</h2>
               </div>
-              <Link href="/courses" className="text-xs text-[#5C899D] hover:underline flex items-center gap-1">
+              <Link
+                href="/courses"
+                className="text-xs text-[#5C899D] hover:underline flex items-center gap-1"
+              >
                 Explore Syllabi <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -435,7 +454,9 @@ function StudentDashboardContent() {
               <div className="h-28 bg-slate-100 rounded-2xl animate-pulse" />
             ) : courseProgress.length === 0 ? (
               <div className="py-6 text-center space-y-2">
-                <p className="text-xs text-slate-500">You haven&apos;t enrolled in any syllabus modules yet.</p>
+                <p className="text-xs text-slate-500">
+                  You haven&apos;t enrolled in any syllabus modules yet.
+                </p>
                 <Link
                   href="/courses"
                   className="inline-block px-3 py-1.5 bg-[#74B49B] text-white text-xs font-semibold rounded-xl"
@@ -446,7 +467,10 @@ function StudentDashboardContent() {
             ) : (
               <div className="space-y-3">
                 {courseProgress.map((cp) => (
-                  <div key={cp.id} className="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-200/70">
+                  <div
+                    key={cp.id}
+                    className="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-200/70"
+                  >
                     <div className="flex items-center justify-between">
                       <strong className="text-xs font-bold text-slate-800">
                         {cp.courses?.title || "Academic Syllabus"}
@@ -459,12 +483,16 @@ function StudentDashboardContent() {
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div
                         className="bg-[#74B49B] h-1.5 rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.max(5, cp.progress_percent))}%` }}
+                        style={{
+                          width: `${Math.min(100, Math.max(5, cp.progress_percent))}%`,
+                        }}
                       />
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <span>{cp.completed_lessons} of {cp.total_lessons} lessons</span>
+                      <span>
+                        {cp.completed_lessons} of {cp.total_lessons} lessons
+                      </span>
                       <Link
                         href={`/courses/${cp.courses?.slug || ""}`}
                         className="text-[#5C899D] font-semibold hover:underline"
@@ -485,7 +513,10 @@ function StudentDashboardContent() {
                 <Target className="w-4 h-4 text-[#5C899D]" />
                 <h2 className="text-base font-bold text-slate-800">Diagnostic Practice Scores</h2>
               </div>
-              <Link href="/practice" className="text-xs text-[#5C899D] hover:underline flex items-center gap-1">
+              <Link
+                href="/practice"
+                className="text-xs text-[#5C899D] hover:underline flex items-center gap-1"
+              >
                 Take Diagnostic <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -541,24 +572,37 @@ function StudentDashboardContent() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-600" />
-                <h2 className="text-base font-bold text-slate-800">Spaced Repetition Performance</h2>
+                <h2 className="text-base font-bold text-slate-800">
+                  Spaced Repetition Performance
+                </h2>
               </div>
-              <Link href="/flashcards" className="text-xs text-[#5C899D] hover:underline flex items-center gap-1">
+              <Link
+                href="/flashcards"
+                className="text-xs text-[#5C899D] hover:underline flex items-center gap-1"
+              >
                 Study Decks <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Reviews</span>
-                <strong className="text-xl font-extrabold text-slate-800">{totalCardsReviewed}</strong>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Total Reviews
+                </span>
+                <strong className="text-xl font-extrabold text-slate-800">
+                  {totalCardsReviewed}
+                </strong>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70">
-                <span className="text-[10px] uppercase font-bold text-emerald-600 block">Box 4 &amp; 5 (Mastered)</span>
+                <span className="text-[10px] uppercase font-bold text-emerald-600 block">
+                  Box 4 &amp; 5 (Mastered)
+                </span>
                 <strong className="text-xl font-extrabold text-emerald-700">{masteredCards}</strong>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 col-span-2 sm:col-span-1">
-                <span className="text-[10px] uppercase font-bold text-amber-600 block">Active In Box 1-3</span>
+                <span className="text-[10px] uppercase font-bold text-amber-600 block">
+                  Active In Box 1-3
+                </span>
                 <strong className="text-xl font-extrabold text-amber-700">
                   {Math.max(0, flashcardReviews.length - masteredCards)}
                 </strong>
@@ -650,7 +694,9 @@ function StudentDashboardContent() {
                   >
                     <div>
                       <strong className="text-slate-800 block">{res.title}</strong>
-                      <span className="text-[10px] text-slate-400 capitalize">{res.resource_type}</span>
+                      <span className="text-[10px] text-slate-400 capitalize">
+                        {res.resource_type}
+                      </span>
                     </div>
                     <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                   </Link>
@@ -704,7 +750,8 @@ function StudentDashboardContent() {
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">Application Submitted!</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Your credentials have been routed to the platform administrative review queue. You will receive access upon approval.
+                  Your credentials have been routed to the platform administrative review queue. You
+                  will receive access upon approval.
                 </p>
               </div>
             ) : (
@@ -723,7 +770,9 @@ function StudentDashboardContent() {
                     >
                       <GraduationCap className="w-4 h-4 mb-1 text-emerald-600" />
                       <div>Verified Teacher</div>
-                      <span className="text-[10px] font-normal text-slate-500">Create &amp; publish courses</span>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        Create &amp; publish courses
+                      </span>
                     </button>
 
                     <button
@@ -737,13 +786,17 @@ function StudentDashboardContent() {
                     >
                       <Compass className="w-4 h-4 mb-1 text-[#5C899D]" />
                       <div>Academic Mentor</div>
-                      <span className="text-[10px] font-normal text-slate-500">Guide scholars 1-on-1</span>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        Guide scholars 1-on-1
+                      </span>
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Affiliated University / School / Organization *</label>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Affiliated University / School / Organization *
+                  </label>
                   <input
                     type="text"
                     required
@@ -755,7 +808,9 @@ function StudentDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Highest Degree / Qualifications *</label>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Highest Degree / Qualifications *
+                  </label>
                   <input
                     type="text"
                     required
@@ -768,7 +823,9 @@ function StudentDashboardContent() {
 
                 {applyRole === "teacher" ? (
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Teaching Subjects (comma separated) *</label>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Teaching Subjects (comma separated) *
+                    </label>
                     <input
                       type="text"
                       required
@@ -781,18 +838,22 @@ function StudentDashboardContent() {
                 ) : (
                   <>
                     <div>
-                      <label className="block font-bold text-slate-700 mb-1">Mentor Headline *</label>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Mentor Headline *
+                      </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. College Admissions Counselor &amp; Competitive Exam Mentor"
+                        placeholder="e.g. College Admissions Counselor & Competitive Exam Mentor"
                         value={headline}
                         onChange={(e) => setHeadline(e.target.value)}
                         className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-slate-700 mb-1">Short Guidance Bio</label>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Short Guidance Bio
+                      </label>
                       <textarea
                         rows={2}
                         placeholder="Brief summary of how you plan to assist students..."
@@ -820,7 +881,8 @@ function StudentDashboardContent() {
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-start gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <span>
-                    To maintain educational integrity, administrative reviewers verify your identity before elevating account privileges.
+                    To maintain educational integrity, administrative reviewers verify your identity
+                    before elevating account privileges.
                   </span>
                 </div>
 
